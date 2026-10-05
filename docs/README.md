@@ -18,10 +18,11 @@ These came from running things, not from any single document:
 1. **GateBoy is not a CPU judge.** Its README says its CPU is "my current best
    guess", not traced from the die. Two die-traced SM83 models do exist and run
    here without sudo: **Gekkio's VHDL** (`gb-research/sm83-cpu-core/hdl`, GHDL)
-   passed Mooneye `daa`, `reg_f` and `ie_push` on its mock SoC, and dumps its
-   decoder in 9 s; **msinger's dmg-sim** (the whole DMG-CPU B, SM83 included,
-   Icarus Verilog) builds in seconds and simulates about 0.1 s of console time
-   per 4–5 minutes.
+   passed Mooneye `daa`, `reg_f`, `ie_push` and blargg `01-special` on its mock
+   SoC but **fails `reti_intr_timing`**, which hardware passes (so it judges only
+   where it agrees with hardware tests), and dumps its decoder in 9 s; **msinger's dmg-sim** (the whole DMG-CPU B, SM83 included,
+   Icarus Verilog) builds in seconds, simulates about 0.1 s of console time
+   per 4–5 minutes, and passed Mooneye `daa` in 51 minutes.
 2. **SingleStepTests sm83 and GBCTR agree** on the M-cycle count of 498 of 500
    opcodes on every case, and on the read/write/internal sequence of all
    498,000 cases; they disagree only on what address an internal cycle shows

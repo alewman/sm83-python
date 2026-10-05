@@ -158,7 +158,9 @@ mock SoC (`gb-research/sm83-cpu-core/hdl/simulation/test_soc.vhd` and
 $0000–$7FFF with a bank register written at $2000–$2FFF (MBC1-style, enough
 for 64 KiB `cpu_instrs.gb`), RAM elsewhere, `LY` ($FF44) reads $90, `SC`
 ($FF02) reads $7F (serial always done), writes to `SB` ($FF01) collected as
-text, $FF0F/$FFFF mapped to the core's `if_`/`ie`, and a stop condition on an
+text (Mooneye's ROMs that rely on the serial *interrupt* hung on exactly this
+mock SoC: validation.md; give the harness a serial port that completes a write
+of $81 to SC after 8 bits and raises IF bit 3, and check those ROMs then pass), $FF0F/$FFFF mapped to the core's `if_`/`ie`, and a stop condition on an
 infinite `JR` to itself or `LD B,B`. Start at $0100 with the DMG post-boot
 registers (Pan Docs `Power_Up_Sequence.md`), or at $0000 with SameBoy's free
 boot ROM. No timer, no PPU: tests that need them belong to rung 6.
