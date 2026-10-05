@@ -24,7 +24,13 @@ run correctly`. Two free substitutes work:
 | SameBoy `dmg_boot.bin` (MIT, built by `scripts/build_referees.py sameboy`) | `src/SameBoy/BootROMs` | 5,881,108 (it animates the logo) | A=01 F=B0 B=00 C=13 D=00 E=D8 H=01 L=4D SP=FFFE, IE=00 IF=01 |
 | dmg-sim `boot/quickboot.bin` (CC-BY-SA-4.0) | `src/dmg-sim/boot` | 633,796 | the same |
 
-Both hand over the DMG register values Pan Docs lists (`Power_Up_Sequence.md`,
+Real Nintendo boot ROMs are also available locally (paths and hashes in
+`/data/emu/gameboy-python/docs/start-here.md` "Boot ROMs"; DMG Rev 1 is MAME's
+`dmg_boot.bin`, SHA-1 `4ed31ec6…`). Optional for rung 4: put one under the
+run's `roms/gameboy/` to get real boot timing without the checksum warning.
+Never commit it. The free substitutes remain the script's default.
+
+Both free ROMs hand over the DMG register values Pan Docs lists (`Power_Up_Sequence.md`,
 "DMG" column). The script uses SameBoy's; give it a different file with the
 same name under `roms/gameboy/` to use quickboot. A trace begins in the boot
 ROM: compare from the first line with PC = $0100.

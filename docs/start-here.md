@@ -30,8 +30,10 @@ tier is in [validation.md](validation.md); cycle detail is in
 There is no I, R, IX, IY, no shadow set, no I/O space, and no S or P/V flag
 (Pan Docs `CPU_Comparison_with_Z80.md`). `IF` ($FF0F, the interrupt request
 latches) lives in the SoC outside the core, but the core samples it at exact
-cycles; see "Interrupts" below and [the brief](handoff-brief.md) for who owns
-the bits.
+cycles. Decided: `ie` and `if_` are core attributes, the core owns $FFFF
+(so the dispatch's push to IE is seen in-core), and the board raises
+interrupts with `cpu.request_interrupt(bit)`; the visibility rule is in
+[the brief](handoff-brief.md).
 
 Flag rules per instruction: Pan Docs `CPU_Instruction_Set.md` and GBCTR's
 per-instruction `flags:` fields; `gb-opcodes/Opcodes.json` has them as data.

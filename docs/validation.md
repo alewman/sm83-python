@@ -186,7 +186,9 @@ judge.
   corpus. The SM83's semantics rest on blargg/Mooneye/Gambatte plus the die
   models; its internal-cycle addresses on GBCTR plus the die models.
 - No Nintendo boot ROM is fetched or needed: SameBoy's and dmg-sim's free boot
-  ROMs both hand over the DMG register values (mame-oracle.md).
+  ROMs both hand over the DMG register values (mame-oracle.md). Real ones exist
+  locally (gameboy-python `docs/start-here.md` "Boot ROMs"); optional for
+  rung 4, never committed.
 
 ## The plan, in oracle-tier order
 
@@ -199,7 +201,7 @@ Each rung is cheaper than the next and earns one claim. Do not reorder.
 | 2 | blargg `cpu_instrs` 01, 03–11 in `sm83_python.harness`: serial text ends "Passed", CPython and PyPy, wall time recorded | hardware-verified | instruction semantics as blargg's hardware CRCs see them |
 | 3 | Mooneye in the harness: `daa`, `reg_f`, `ie_push`; then `if_ie_registers`, `ei_sequence`, `ei_timing`, `rapid_di_ei`, `intr_timing`, `reti_intr_timing` once the harness completes serial transfers (SC bit 7 clears after a write of $81) instead of the mock SoC's constant $7F | hardware-verified | DAA on every input, F's low nibble, IE-push cancellation, EI/DI sequences |
 | 4 | MAME replay with I/O reads fed from MAME's log (mame-oracle.md) on several commercial-style programs; per-instruction registers and cycle deltas | emulator-derived | long real-code agreement; every divergence explained by a higher tier |
-| 5 | Gekkio's VHDL: rung 2/3 ROMs agree; new per-instruction testbench dumps die-derived bus cycles incl. internal addresses for all opcodes and dispatch; compare with the core. Spot-check on dmg-sim | die-traced | internal-cycle addresses and dispatch bus from the die, not from one document |
+| 5 (first build session, after 0–3; not blocking them) | Gekkio's VHDL: rung 2/3 ROMs agree; new per-instruction testbench dumps die-derived bus cycles incl. internal addresses for all opcodes and dispatch; compare with the core. Spot-check on dmg-sim | die-traced | internal-cycle addresses and dispatch bus from the die, not from one document |
 | 6 | Through gameboy-python: blargg 02, `instr_timing`, `mem_timing`, `mem_timing-2`, `halt_bug`, `oam_bug`; Mooneye timing tests; Gambatte `halt`, `irq_precedence`, `undef_ops`, `speedchange`; SameSuite `ei_delay_halt` | hardware-verified / hardware-captured | HALT, wake-up, dispatch timing and STOP as the hardware does them, on DMG then CGB |
 
 Rung 6 is the board's acceptance, not this repository's; failures it traces

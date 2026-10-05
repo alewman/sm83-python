@@ -35,8 +35,8 @@ The user's rules that bind this work:
   external users yet.
 - **No dangerous-looking shell one-liners** in scripts or docs (no `rm -rf`,
   `sed -i`); keep CI minimal (PyPy only, main + PRs, cancel in progress) if and
-  when a GitHub repo exists. This repository is **local git only** until the
-  user says otherwise.
+  when a GitHub repo exists. This repository is **local git only** until
+  rung 3 passes (see "Decided by the user").
 
 ### Read, in this order, before writing code
 
@@ -75,13 +75,30 @@ for Gekkio's die model, dmg-sim). `python scripts/gbctr_timing.py` writes
   compare cycle for cycle; GBCTR's overlapped tables convert by moving the final
   fetch to the front of the next instruction (start-here.md shows the two are
   the same bus sequence).
-- **IE and IF are core attributes** `ie` and `if_` (5 bits used; `if_`'s upper
-  three bits read 1 is the board's mapping detail, Mooneye
-  `if_ie_registers`). The board maps $FFFF and $FF0F to them and raises
-  interrupts by setting `if_` bits from inside its callbacks. GBCTR puts IE
-  in the core; IF is SoC-side on the die, but the core must sample it at
-  exact cycles of the dispatch (timing.md), and an attribute read is both
-  exact and cheap. *Open for the user to overrule: see "Decisions for the user".*
+- **IE and IF are core attributes** `ie` and `if_` (decided by the user,
+  2026-10-05). GBCTR puts IE in the core; IF is SoC-side on the die, but the
+  core samples it at exact cycles of the dispatch (timing.md) and an attribute
+  read is exact and cheap. Rules:
+  - **The core owns $FFFF.** A write to $FFFF updates `cpu.ie` inside the core
+    *before* the write callback returns control to the instruction, and a read
+    of $FFFF returns `cpu.ie` (all 8 bits as written: SameBoy stores the full
+    byte; not verified on hardware here, a board-level Mooneye/Gambatte check). The callback is
+    still made (the cycle exists; watchpoints see it); the board must not map
+    $FFFF itself. This is what makes Mooneye `ie_push` work in-core: the
+    dispatch's high-byte push to $FFFF changes `ie` before the core samples it.
+  - **The board raises interrupts with `cpu.request_interrupt(bit)`**
+    (bit 0 VBlank … 4 Joypad), which sets `if_ |= 1 << bit`. It may be called
+    from inside any bus callback. *Same-cycle visibility:* a request made
+    during M-cycle k's callback is visible to every core decision taken after
+    that callback returns: the pending check at the start of the next `step()`,
+    HALT wake-up on the next halted cycle, and the dispatch's IF sample after
+    its low-byte push (so a request during that push's callback can still pick
+    the vector). It is never visible to a decision already taken earlier in the
+    same `step()`.
+  - **$FF0F stays on the board's map** (it is SoC I/O): the board's read of
+    $FF0F returns `cpu.if_ | 0xE0` and its write sets `cpu.if_ = value & 0x1F`
+    (Mooneye `if_ie_registers`: upper bits read 1). The dispatch clears the
+    serviced bit itself.
 
 ## The bus contract (required)
 
@@ -97,6 +114,7 @@ cpu = SM83(read_byte, write_byte, idle)
 # cpu.idu is +1, -1 or 0 before each callback: what the IDU did to the value
 # on the address bus this cycle (fetch: +1; LD A,(HL-): -1; ADD HL,BC M2: 0).
 # cpu.halted / cpu.stopped / cpu.locked are readable inside callbacks.
+# cpu.request_interrupt(bit) may be called inside callbacks (see Decisions).
 cycles = cpu.step()   # M-cycles consumed == number of callbacks made
 ```
 
@@ -176,11 +194,26 @@ internal and the `idu` value), `console.py`, `py.typed`, and
 `python -m sm83_python ROM.gb [--boot BOOT] [--max-cycles N] [--trace out.jsonl]`
 running a ROM in the harness and printing the serial text.
 
-## Decisions for the user (asked, not assumed)
+## Decided by the user (2026-10-05)
 
-1. IE and IF as core attributes (above) versus IF behind a board callable.
-   The attribute design is assumed; overruling it changes only the dispatch
-   sampling code.
-2. Whether to publish: GitHub private repo now, or local until rung 3 passes.
-3. Whether rung 5's per-instruction die testbench (VHDL, ~a day of work) is
-   in scope for the first build session or a follow-up.
+1. IE and IF are core attributes; the board raises IF bits through
+   `request_interrupt(bit)` with the visibility rule above; the IE write during
+   the dispatch push is handled in-core (the core owns $FFFF).
+2. **Local git only until rung 3 passes**; then a **private** GitHub repo
+   `alewman/sm83-python`. CI then follows the family's minimal-minutes rule:
+   one interpreter (PyPy), on `push` to `main` and on `pull_request`,
+   `concurrency` with cancel-in-progress, a job timeout; heavier oracle runs
+   only on `workflow_dispatch`.
+3. **Rung 5's per-instruction die testbench is in the first build session**,
+   after rungs 0–3 pass; it does not block them. Rung 4 (MAME replay) may run
+   before or after it.
+
+## Boot ROMs
+
+Never committed, never needed by rungs 0–3 (the harness starts at $0100 with
+the DMG post-boot registers). Real Nintendo boot ROMs exist locally, listed
+with paths and hashes in `/data/emu/gameboy-python/docs/start-here.md`
+"Boot ROMs" (DMG Rev 1 = MAME `dmg_boot.bin`, SHA-1 `4ed31ec6…`). For rung 4
+they are optional: copied into MAME's per-run `roms/gameboy/` (gitignored
+`tests/mame_traces/`), they remove the checksum warning and give real boot
+timing; SameBoy's free ROM remains the default of `scripts/mame_trace.py`.
