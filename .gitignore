@@ -1,0 +1,29 @@
+# Python and package builds
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments and tooling
+.venv/
+.venv-*/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Fetched references, test ROMs, tools and referee builds; scripts/fetch_references.py
+# and scripts/build_referees.py fill these from scripts/pinned_*.json.
+# Never commit them: third-party documents, programs, simulators and source trees.
+reference/
+
+# Generated from the pinned GBCTR source by scripts/gbctr_timing.py.
+tests/gbctr_timing.json
+
+# MAME oracle runs (scripts/mame_trace.py): traces, error.log, cfg, snapshots,
+# the substitute boot ROM. Never commit ROMs or traces.
+tests/mame_traces/
+*.trace
+error.log
