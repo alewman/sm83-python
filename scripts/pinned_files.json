@@ -1,0 +1,47 @@
+[
+ {
+  "path": "reference/roms/mts-20260714-0944-31510e1.zip",
+  "url": "https://gekkio.fi/files/mooneye-test-suite/mts-20260714-0944-31510e1/mts-20260714-0944-31510e1.zip",
+  "sha256": "18aa29462dfe1fcd32a2cb3621733abdc72410074918b9245aa99a6920f7d3f2",
+  "size": 423779,
+  "kind": "test-rom",
+  "license": "MIT",
+  "note": "Mooneye Test Suite built at 31510e1 (the pinned source rev); unzipped in place by the fetch script"
+ },
+ {
+  "path": "reference/docs/gbctr.pdf",
+  "url": "https://gekkio.fi/files/gb-docs/gbctr.pdf",
+  "sha256": "cb75ab32f3dfe643ed99f4bf540f9964e5e29dada021cfa4cc14e9e0c0132783",
+  "size": 2890922,
+  "kind": "live-document",
+  "license": "CC-BY-SA-4.0",
+  "note": "Game Boy: Complete Technical Reference, PDF built 2026-08-15 (Typst 0.15.0, 176 pages); the URL serves the newest build"
+ },
+ {
+  "path": "reference/docs/SonoSooS-DMGCPU.md",
+  "url": "https://gist.githubusercontent.com/SonoSooS/c0055300670d678b5ae8433e20bea595/raw/8efa6645473411e78dd917169141c16c0d306ce1/DMGCPU.MD",
+  "sha256": "4cb192b351ee77707103c754accd8b71460eac19ce845caaa543d4c521357d26",
+  "size": 14862,
+  "kind": "document",
+  "license": "none stated",
+  "note": "'Gameboy CPU internals' gist rev 8efa664 (2023-06-27): fetch overlap, HALT/STOP/EI/DI, ISR cycles, opcode holes"
+ },
+ {
+  "path": "reference/build/oss-cad-suite-linux-x64-20261005.tgz",
+  "url": "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-10-05/oss-cad-suite-linux-x64-20261005.tgz",
+  "sha256": "0c432bb689ba2aaea76d4c38fa6e7b3a81b1123e00d437bfae8c96b292bc6824",
+  "size": 746561069,
+  "kind": "tool",
+  "license": "ISC and per-tool",
+  "note": "GHDL 7.0.0-dev, Icarus Verilog, Verilator, no sudo needed; unpacked by scripts/build_referees.py"
+ },
+ {
+  "path": "reference/build/rgbds-linux-x86_64.tar.xz",
+  "url": "https://github.com/gbdev/rgbds/releases/download/v1.0.4/rgbds-linux-x86_64.tar.xz",
+  "sha256": "3e19e50ea602e316be709160acaf0a708b1fa6d32d219ec541f244442895dbb7",
+  "size": 1406524,
+  "kind": "tool",
+  "license": "MIT",
+  "note": "rgbds v1.0.4; builds SameBoy's boot ROMs"
+ }
+]
