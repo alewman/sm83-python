@@ -75,7 +75,7 @@ class Builder:
         self.at += len(data)
         return start
 
-    def case(self, name, body, *, flags=(1, 0), pre=None, filler=0, align=None):
+    def case(self, name, body, *, flags=(1, 0), pre=None, filler=0, align=None, meta=None):
         """Place one case. ``body`` and ``pre`` are byte lists, or functions of the address of
         the case after this one (so a jump can land there); ``filler`` NOPs follow the body.
         ``align`` puts the body's first byte at that low address by padding first."""
@@ -100,11 +100,19 @@ class Builder:
                 self.emit([0x00])
         next_address = self.at + len(setup) + len(before) + len(instruction) + filler
         setup, before, instruction = build(next_address)
-        self.emit(setup)
+        start = self.emit(setup)
         self.emit(before)
         address = self.emit(instruction)
         self.emit([0x00] * filler)
-        self.cases.append({"name": name, "address": address, "length": len(instruction)})
+        self.cases.append(
+            {
+                "name": name,
+                "start": start,
+                "address": address,
+                "length": len(instruction),
+                **(meta or {}),
+            }
+        )
 
 
 def push_next(next_address: int) -> list[int]:
@@ -130,6 +138,49 @@ def operand_bytes(opcode: int, category: str) -> list[int]:
     if category in ("LD_nn_a", "LD_a_nn", "LD_nn_sp"):
         return [0x00, 0xC5]  # WRAM
     return [0x34, 0x12]  # LD rr,nn
+
+
+IE_ON = [0x3E, 0x01, 0xE0, 0xFF]  # LD A,1 ; LDH (IE),A
+IF_ON = [0x3E, 0x01, 0xE0, 0x0F]  # LD A,1 ; LDH (IF),A
+CLEAN = [0xAF, 0xE0, 0x0F, 0xE0, 0xFF]  # XOR A ; IF = 0 ; IE = 0
+INJECT_AFTER = range(-1, 8)  # M-cycles after the HALT's fetch at which the interrupt is raised
+
+
+def add_halt_case(b: Builder, ime: bool, after: int) -> None:
+    """One HALT case: IME on or off, IF bit 0 raised ``after`` M-cycles from the HALT's fetch.
+
+    The mock SoC has no peripheral to raise interrupts, so the case asks the comparison to do
+    it (``inject_after``). The request is scheduled relative to a fetch before the HALT, so it
+    can precede the HALT's own fetch: ``trigger_offset`` is that instruction's offset in the
+    case body and ``trigger_to_halt`` the M-cycles from its fetch to the HALT's.
+    """
+    enable = [0xFB, 0x00] if ime else []  # EI ; NOP puts IME = 1 before the HALT
+    # the instruction before the HALT: NOP (1 M-cycle) after an EI, else LDH (IE),A (3)
+    trigger_offset = len(IE_ON) + 1 if ime else len(IE_ON) - 2
+    trigger_to_halt = 1 if ime else 3
+    meta = {
+        "halt_offset": len(IE_ON) + len(enable),
+        "trigger_offset": trigger_offset,
+        "inject_after": trigger_to_halt + after,
+        "mask": 1,
+    }
+    name = f"HALT ime={int(ime)} IF raised {after:+d} cycles from the fetch"
+    b.case(name, [*IE_ON, *enable, 0x76, 0x3C, 0x00], pre=store_next, meta=meta)
+
+
+def add_pending_halt_cases(b: Builder) -> None:
+    """HALT with an interrupt already pending when it executes."""
+    b.case("HALT ime=0 pending (the HALT bug)", [*IE_ON, *IF_ON, 0x76, 0x3C, 0x00], pre=store_next)
+    b.case("HALT after EI, pending", [*IE_ON, *IF_ON, 0xFB, 0x76, 0x3C, 0x00], pre=store_next)
+
+
+def build_single(add) -> Builder:
+    """A ROM with one scenario and a closing ``JR $``; the die never leaves a halted HALT in
+    the mock SoC, so each HALT scenario gets a simulation of its own."""
+    b = Builder()
+    add(b)
+    b.case("end", [0x18, 0xFE])
+    return b
 
 
 def build() -> Builder:

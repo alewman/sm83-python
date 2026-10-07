@@ -188,7 +188,9 @@ def test_reti_sets_ime_with_no_delay():
 def test_halt_ime1_no_pending_halts_then_dispatches_on_wake():
     host = host_at(ie=0x01, ime=True)
     host.load(0x0200, 0x76, 0x00)
-    assert host.cpu.step() == 1 and host.cpu.halted and host.cpu.pc == 0x0201
+    # HALT is two M-cycles: its fetch, then a read of the next byte without moving PC (rung 5)
+    assert host.cpu.step() == 2 and host.cpu.halted and host.cpu.pc == 0x0201
+    assert host.log == [("read", 0x0200, 1), ("read", 0x0201, 0)]
     host.log.clear()
     assert host.run(3) == [1, 1, 1] and host.log == [("internal", 0x0201, 0)] * 3
     host.cpu.request_interrupt(0)
@@ -208,15 +210,37 @@ def test_halt_ime0_no_pending_wakes_and_continues_without_dispatch():
 
 
 def test_halt_ime1_with_pending_does_not_halt_and_returns_to_the_halt():
-    # U6: the dispatch happens at the HALT and pushes the HALT's own address
-    host = host_at(ie=0x01, if_=0x01, ime=True)
+    # U6: only reachable through EI (otherwise the dispatch precedes the HALT): IME comes on in
+    # the HALT's own step, an interrupt is pending, so the dispatch happens at the HALT and
+    # pushes the HALT's address. HALT makes no cycle of its own: its cycle is the dispatch's
+    # discarded fetch, at the next byte with PC not advanced (die model, rung 5).
+    host = host_at(ie=0x01, if_=0x01, ei_pending=True)
     host.load(0x0200, 0x76)
-    host.cpu.if_ = 0
-    host.on_cycle = lambda n, kind, address: n == 1 and host.cpu.request_interrupt(0)
-    assert host.cpu.step() == 1 and not host.cpu.halted and host.cpu.pc == 0x0200
-    host.on_cycle = None
+    assert host.cpu.step() == 1 and not host.cpu.halted and host.cpu.halt_dispatch
+    host.log.clear()
     assert host.cpu.step() == 5
+    assert host.log == [
+        ("read", 0x0201, 0),  # the discarded fetch: PC is not incremented
+        ("internal", 0x0201, -1),  # the IDU puts PC back onto the HALT
+        ("internal", 0xC100, -1),
+        ("write", 0xC0FF, -1),
+        ("write", 0xC0FE, 0),
+    ]
     assert host.memory[0xC0FF] == 0x02 and host.memory[0xC0FE] == 0x00
+    assert not host.cpu.halt_dispatch and host.cpu.pc == 0x40
+
+
+def test_halt_decides_on_the_interrupt_state_before_its_own_fetch():
+    # An interrupt raised during the HALT's own fetch cycle is not seen: the CPU halts (after
+    # its extra cycle). One already raised in the cycle before is: the HALT bug. The die model
+    # flips between the two at exactly this point (rung 5, scripts/die_halt.py).
+    during = host_at(ie=0x01)
+    during.load(0x0200, 0x76, 0x3C)
+    during.on_cycle = lambda n, kind, address: n == 1 and during.cpu.request_interrupt(0)
+    assert during.cpu.step() == 2 and during.cpu.halted and not during.cpu.halt_bug
+    before = host_at(ie=0x01, if_=0x01)
+    before.load(0x0200, 0x76, 0x3C)
+    assert before.cpu.step() == 1 and before.cpu.halt_bug and not before.cpu.halted
 
 
 def test_halt_bug_reads_the_next_byte_twice():
@@ -236,7 +260,7 @@ def test_ei_halt_with_pending_dispatches_and_returns_to_the_halt():
     host = host_at(ie=0x01, if_=0x01)
     host.load(0x0200, 0xFB, 0x76)
     host.run(2)  # EI; HALT (IME has just come on, so no HALT bug)
-    assert not host.cpu.halted and not host.cpu.halt_bug and host.cpu.pc == 0x0201
+    assert not host.cpu.halted and not host.cpu.halt_bug and host.cpu.halt_dispatch
     assert host.cpu.step() == 5
     assert host.memory[0xC0FF] == 0x02 and host.memory[0xC0FE] == 0x01
 

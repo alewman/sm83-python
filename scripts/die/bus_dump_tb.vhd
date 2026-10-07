@@ -2,10 +2,12 @@
 -- mock SoC and write one CSV row per M-cycle: what the CPU drove on the bus, internal cycles
 -- included. The columns are
 --
---   cycle,addr,rd,wr,m1,data
+--   cycle,addr,rd,wr,m1,data,run
 --
--- sampled 5 ns after the rising edge of `writeback`, when the address, the read and write
--- strobes and the data bus are all valid (test_rom_tb samples a fetch at the same edge).
+-- sampled once per M-cycle of the system clock, 720 ns after `mclk_pulse` rises: 5 ns after the
+-- CPU's `writeback` edge, when the address, the read and write strobes and the data bus are all
+-- valid (test_rom_tb samples a fetch at that edge). `run` is the CPU clock enable: the die gates
+-- the CPU's clock while it is halted, so a halted M-cycle has run = 0 and no bus activity.
 -- rd and wr are 1 for a read or write M-cycle; a cycle with neither is an internal cycle and
 -- `addr` is what the CPU drove on the address bus that cycle (docs/validation.md rung 5). m1
 -- marks an opcode fetch. data is the byte on the bus ("--" if nothing drives it).
@@ -54,7 +56,10 @@ architecture tb of bus_dump_tb is
   signal boot_en: std_ulogic;
   signal m1: std_ulogic;
   signal irq_inject: std_ulogic_vector(4 downto 0) := (others => '0');
+  signal cpuclk_en: std_ulogic;
   signal logged: natural := 0;
+  signal fetch_addr: std_ulogic_vector(15 downto 0) := (others => '0');
+  signal fetch_row: natural := 0;
 
   function bit_char(b: std_ulogic) return character is
   begin
@@ -86,7 +91,7 @@ begin
   begin
     test_runner_setup(runner, runner_cfg);
     file_open(out_file, out_path, write_mode);
-    write(row, string'("cycle,addr,rd,wr,m1,data"));
+    write(row, string'("cycle,addr,rd,wr,m1,data,run"));
     writeline(out_file, row);
 
     rom_data <= load_raw(rom_path, 8, false);
@@ -96,13 +101,13 @@ begin
     wait until rising_edge(clocks.mclk_pulse);
 
     while cycle < max_cycles loop
-      wait until rising_edge(clocks.writeback);
-      wait for 5 ns;
+      wait until rising_edge(clocks.mclk_pulse);
+      wait for 720 ns;
       is_fetch := to_x01(m1) = '1';
       write(row, cycle);
       write(row, ',' & to_hex_string(to_ux01(bus_ctrl.addr)));
       write(row, ',' & bit_char(bus_ctrl.rd) & ',' & bit_char(bus_ctrl.wr));
-      write(row, ',' & bit_char(m1) & ',' & data_text(data));
+      write(row, ',' & bit_char(m1) & ',' & data_text(data) & ',' & bit_char(cpuclk_en));
       writeline(out_file, row);
       cycle := cycle + 1;
       logged <= cycle;
@@ -114,6 +119,8 @@ begin
         end if;
         last_fetch := to_ux01(bus_ctrl.addr);
         fetched := true;
+        fetch_addr <= last_fetch;
+        fetch_row <= cycle - 1;
       end if;
     end loop;
 
@@ -134,26 +141,34 @@ begin
     data => data,
     boot_en => boot_en,
     m1 => m1,
-    irq_inject => irq_inject
+    irq_inject => irq_inject,
+    cpuclk_en_out => cpuclk_en
   );
 
-  -- A peripheral raising interrupts: each line of the inject file is "cycle mask"; the IF bits
-  -- in `mask` are set for one M-cycle starting right after the CSV row `cycle` is written.
+  -- A peripheral raising interrupts. Each line of the inject file is "address k mask" (hex, k
+  -- and mask decimal): `k` M-cycles after the opcode fetch at `address`, the IF bits in `mask`
+  -- are set for one M-cycle (starting right after that CSV row is written). Relative to a
+  -- fetch, so a case that takes a different time on the die does not shift the later ones.
   injector: process
     file schedule: text;
     variable l: line;
-    variable at_cycle, mask: integer;
-    type int_array is array (0 to 63) of integer;
-    variable cycles, masks: int_array;
+    variable addr_text: string(1 to 4);
+    variable k, mask: integer;
+    type int_array is array (0 to 255) of integer;
+    type addr_array is array (0 to 255) of std_ulogic_vector(15 downto 0);
+    variable addrs: addr_array;
+    variable ks, masks: int_array;
     variable count: natural := 0;
   begin
     if inject_path /= "" then
       file_open(schedule, inject_path, read_mode);
       while not endfile(schedule) loop
         readline(schedule, l);
-        read(l, at_cycle);
+        read(l, addr_text);
+        read(l, k);
         read(l, mask);
-        cycles(count) := at_cycle;
+        addrs(count) := std_ulogic_vector(to_unsigned(natural'value("16#" & addr_text & "#"), 16));
+        ks(count) := k;
         masks(count) := mask;
         count := count + 1;
       end loop;
@@ -163,13 +178,12 @@ begin
       wait on logged;
       irq_inject <= (others => '0');
       for i in 0 to count - 1 loop
-        if cycles(i) = logged - 1 then
+        if fetch_addr = addrs(i) and logged - 1 = fetch_row + ks(i) then
           irq_inject <= std_ulogic_vector(to_unsigned(masks(i), 5));
         end if;
       end loop;
     end loop;
   end process;
-
   ppu: process(all)
   begin
     data <= X"ZZ";

@@ -118,12 +118,21 @@ class ControlMixin(CoreMixin):
 
     def _op_halt(self, op: int) -> None:
         """HALT -- stop executing until an interrupt is pending (GBCTR HALT; U4-U6)."""
-        if not self.interrupt_pending:
-            self.halted = True
-        elif self.ime:
-            self.pc = (self.pc - 1) & 0xFFFF  # no halt: the dispatch pushes the HALT itself (U6)
-        else:
-            self.halt_bug = True  # no halt, and the next fetch does not increment PC (U4)
+        # The decision uses the interrupt state sampled before HALT's own fetch, as dispatch
+        # does: an interrupt raised during that fetch is not seen (die model, rung 5).
+        if self.pending_at_fetch:
+            if self.ime:
+                self.halt_dispatch = True  # no halt: the dispatch pushes the HALT itself (U6)
+            else:
+                # the HALT bug (U4): no halt, and the next fetch does not increment PC. The die
+                # makes no extra cycle: the byte after the HALT is fetched, and fetched again
+                self.halt_bug = True
+            return
+        # HALT's own M-cycle fetches the next byte without incrementing PC (SonoSooS: IR =
+        # [PC]); the die shows it as an opcode fetch at the next address before its clock stops,
+        # and the byte is fetched again on wake-up. SameBoy halt() reads the same way.
+        self._read(self.pc)
+        self.halted = True
 
     def _op_stop(self, op: int) -> None:
         """STOP -- the board decides the outcome through the stop hook (timing.md "STOP"; U11)."""

@@ -1,6 +1,7 @@
 -- A copy of Gekkio's test_soc.vhd (gb-research/sm83-cpu-core, SPDX MIT OR Apache-2.0,
 -- (c) 2020-2022 Joonas Javanainen) with one added input, `irq_inject`: a bit set there for an
--- M-cycle raises the matching IF bit, as a peripheral (timer, PPU) would. Nothing else changed.
+-- M-cycle raises the matching IF bit, as a peripheral (timer, PPU) would, and `cpuclk_en_out`,
+-- the CPU clock enable (low while the CPU is halted). Nothing else changed.
 --
 -- SPDX-FileCopyrightText: 2020-2022 Joonas Javanainen <joonas.javanainen@gmail.com>
 --
@@ -23,6 +24,7 @@ entity test_soc_irq is
     irq: in std_ulogic_vector(7 downto 0) := (others => '0');
     nmi: in std_ulogic := '0';
     irq_inject: in std_ulogic_vector(4 downto 0) := (others => '0');
+    cpuclk_en_out: out std_ulogic;
     addr: out std_ulogic_vector(15 downto 0);
     data: inout std_logic_vector(7 downto 0);
     bus_ctrl: out soc_bus_ctrl_type;
@@ -84,6 +86,8 @@ begin
     clocks_gen.writeback <= SEQ_WRITEBACK(to_integer(clk_counter));
     clocks_gen.writeback_ext <= SEQ_WRITEBACK_EXT(to_integer(clk_counter));
   end process;
+
+  cpuclk_en_out <= cpuclk_en;
 
   core_inst: entity sm83.cpu_core
   port map (
