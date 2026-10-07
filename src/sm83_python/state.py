@@ -41,6 +41,7 @@ class CPUState:
     ei_pending: bool = False
     halted: bool = False
     halt_bug: bool = False
+    halt_dispatch: bool = False
     stopped: bool = False
     locked: bool = False
     stop_if: int = 0
@@ -53,7 +54,15 @@ class CPUState:
             raise ValueError("f bits 3..0 do not exist and must be 0")
         for name in ("sp", "pc"):
             _require_int(name, getattr(self, name), 0xFFFF)
-        for name in ("ime", "ei_pending", "halted", "halt_bug", "stopped", "locked"):
+        for name in (
+            "ime",
+            "ei_pending",
+            "halted",
+            "halt_bug",
+            "halt_dispatch",
+            "stopped",
+            "locked",
+        ):
             _require_bool(name, getattr(self, name))
 
 

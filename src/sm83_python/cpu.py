@@ -66,6 +66,7 @@ class SM83(ControlMixin, RotateBitMixin, ALUMixin, LoadMixin, CoreMixin):
         self.idle = idle if idle is not None else _no_idle
         self.stop_hook = stop
         self.idu = 0
+        self.pending_at_fetch = False
         self._cycles = 0
         self._table = [getattr(self, name) for name in HANDLER_NAMES]
         self.restore_state(CPUState())
@@ -77,7 +78,7 @@ class SM83(ControlMixin, RotateBitMixin, ALUMixin, LoadMixin, CoreMixin):
         self.ie = 0
         self.ime = False
         self.ei_pending = False
-        self.halted = self.halt_bug = self.stopped = self.locked = False
+        self.halted = self.halt_bug = self.halt_dispatch = self.stopped = self.locked = False
 
     def capture_state(self) -> CPUState:
         """The complete CPU-owned state as an immutable value."""
@@ -98,6 +99,7 @@ class SM83(ControlMixin, RotateBitMixin, ALUMixin, LoadMixin, CoreMixin):
             ei_pending=self.ei_pending,
             halted=self.halted,
             halt_bug=self.halt_bug,
+            halt_dispatch=self.halt_dispatch,
             stopped=self.stopped,
             locked=self.locked,
             stop_if=self.stop_if,
@@ -111,6 +113,7 @@ class SM83(ControlMixin, RotateBitMixin, ALUMixin, LoadMixin, CoreMixin):
         self.ie, self.if_ = state.ie, state.if_
         self.ime, self.ei_pending = state.ime, state.ei_pending
         self.halted, self.halt_bug = state.halted, state.halt_bug
+        self.halt_dispatch = state.halt_dispatch
         self.stopped, self.locked = state.stopped, state.locked
         self.stop_if = state.stop_if
 

@@ -45,9 +45,11 @@ class CoreMixin:
     ei_pending: bool
     halted: bool
     halt_bug: bool
+    halt_dispatch: bool
     stopped: bool
     locked: bool
     stop_if: int
+    pending_at_fetch: bool
     idu: int
     read_byte: Callable[[int], int]
     write_byte: Callable[[int, int], None]
@@ -185,8 +187,17 @@ class CoreMixin:
         (Mooneye ie_push, hardware-verified on every model).
         """
         self.halted = False
-        self._read(self.pc, 1)  # M1: the fetch that would start the next instruction, discarded
-        self._idle((self.pc + 1) & 0xFFFF, -1)  # M2: the IDU puts PC back (docs C2)
+        if self.halt_dispatch:
+            # EI; HALT with an interrupt pending: the HALT's own M-cycle is the discarded fetch,
+            # at the byte after it, with PC not advanced; the IDU then puts PC back onto the
+            # HALT itself (die model, rung 5)
+            self.halt_dispatch = False
+            self._read(self.pc)
+            self._idle(self.pc, -1)
+            self.pc = (self.pc - 1) & 0xFFFF
+        else:
+            self._read(self.pc, 1)  # M1: the fetch that would start the next instruction, discarded
+            self._idle((self.pc + 1) & 0xFFFF, -1)  # M2: the IDU puts PC back (docs C2)
         self._idle(self.sp, -1)  # M3: SP - 1
         self.sp = (self.sp - 1) & 0xFFFF
         self._write(self.sp, self.pc >> 8, -1)  # M4: PCH
@@ -233,6 +244,7 @@ class CoreMixin:
         if effective_ime and pending:
             self._dispatch()
             return self._cycles - start
+        self.pending_at_fetch = pending  # HALT decides on the interrupt state before its own fetch
         opcode = self._read(self.pc, 1)  # the fetch
         if self.halt_bug:
             self.halt_bug = False  # the HALT bug: this fetch does not increment PC (U4)
