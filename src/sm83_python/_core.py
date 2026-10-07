@@ -209,7 +209,7 @@ class CoreMixin:
         the board loops."""
         start = self._cycles
         if self.locked:
-            self._idle(self.pc)  # the 11 holes: the CPU never fetches again (U3)
+            self._idle(0x0000)  # the 11 holes: no more fetches, the die drives $0000 (U3, rung 5)
             return 1
         if self.stopped:
             self._idle(self.pc)
