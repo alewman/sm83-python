@@ -17,7 +17,9 @@ MAME runs it after a WRONG CHECKSUMS warning.
   ``PC A F B C D E H L SP IE IF totalcycles``; ``totalcycles`` counts T-cycles
   (4 per M-cycle: a NOP advances it by 4), from power-on of the boot ROM;
 - ``SB value totalcycles`` for every write to $FF01 (the serial data
-  register, where blargg's and Mooneye's ROMs print).
+  register, where blargg's and Mooneye's ROMs print);
+- with ``--io``, ``R address data totalcycles`` for every read of $FF00-$FFFF, in
+  order, after the line of the instruction that made it.
 
 MAME saves a PNG of the screen under ``snap/<driver>/`` at frame ``--snapshot``
 (default: the last whole frame of ``--seconds``; the DMG runs 59.73 frames a
@@ -56,6 +58,12 @@ dbg:command('wpset ff01,1,w,1,{logerror "SB %X %d\\\\n",wpdata,totalcycles; g}')
 dbg:command("go")
 """
 
+# --io adds every read of $FF00-$FFFF (I/O registers, HRAM and IE), in order, for the replay
+# (sm83_python.replay): ``R address data totalcycles`` lines between the instruction lines.
+IO_LUA = """\
+dbg:command('wpset ff00,100,r,1,{logerror "R %X %X %d\\\\n",wpaddr,wpdata,totalcycles; g}')
+"""
+
 # Notifier subscriptions are unsubscribed when garbage-collected: keep them in
 # globals, or the callbacks silently stop.
 SNAP_LUA = """\
@@ -76,6 +84,7 @@ def main() -> int:
     parser.add_argument("rom", type=Path)
     parser.add_argument("--seconds", type=int, default=3, help="emulated seconds")
     parser.add_argument("--no-trace", action="store_true", help="no debugger: result only")
+    parser.add_argument("--io", action="store_true", help="also log reads of $FF00-$FFFF")
     parser.add_argument("--snapshot", type=int, metavar="FRAME")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--mame", default=MAME)
@@ -91,7 +100,11 @@ def main() -> int:
     (out / "roms" / args.driver).mkdir(parents=True)
     shutil.copyfile(boot, out / "roms" / args.driver / boot_name)
     shutil.copyfile(rom, out / "cart.gb")
-    lua = "" if args.no_trace else TRACE_LUA
+    lua = ""
+    if not args.no_trace:
+        lua = TRACE_LUA
+        if args.io:  # the watchpoint goes in before "go"
+            lua = lua.replace('dbg:command("go")', IO_LUA + 'dbg:command("go")')
     lua += SNAP_LUA.format(frame=args.snapshot or int(args.seconds * 59.73) - 1)
     (out / "trace.lua").write_text(lua, encoding="utf-8")
     version = subprocess.run(
