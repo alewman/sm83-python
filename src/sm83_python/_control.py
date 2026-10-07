@@ -22,10 +22,11 @@ class ControlMixin(CoreMixin):
 
     def _jump_relative(self) -> None:
         offset = self._read_pc()
-        # The ALU adds the offset to PC while the bus idles at PC; the IDU adjusts PCH for the
-        # carry (GBCTR JR "W <- adj PCH"; GBCTR words the address "PCH", read here as PC,
-        # to be settled against the die model, rung 5).
-        self._idle(self.pc)
+        # The ALU adds the offset to PCL while the IDU adjusts PCH for the carry (GBCTR JR "W <-
+        # adj PCH"). The address bus carries PCH in its high byte and zero below it: Gekkio's
+        # die model drives $2400 for a JR whose operand fetch left PC = $2402 (rung 5, all 14
+        # JR cases at 10 low addresses, forward and backward).
+        self._idle(self.pc & 0xFF00)
         self.pc = (self.pc + signed(offset)) & 0xFFFF
 
     def _op_jr(self, op: int) -> None:

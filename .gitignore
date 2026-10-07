@@ -27,3 +27,6 @@ tests/gbctr_timing.json
 tests/mame_traces/
 *.trace
 error.log
+
+# Die-model runs (scripts/die_compare.py): the generated ROM and the simulator's bus CSV.
+tests/die_runs/

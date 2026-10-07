@@ -66,7 +66,7 @@ def test_holes_lock_the_cpu_and_nothing_wakes_it(opcode):
     pc = host.cpu.pc
     host.log.clear()
     assert host.run(5) == [1] * 5
-    assert host.log == [("internal", pc, 0)] * 5
+    assert host.log == [("internal", 0x0000, 0)] * 5  # the die drives $0000 (rung 5)
     assert host.cpu.pc == pc and host.cpu.sp == 0xC100
 
 

@@ -107,8 +107,8 @@ def expected_schedule(cycles: list[dict], op: int, state: dict, observed: list[i
             "$FF00+C": 0xFF00 | regs["c"],
             "$FF00+Z": 0xFF00 | z,
             "$0000": 0,
-            # GBCTR words JR's internal address "PCH"; the bus carries PC (rung 5 settles it)
-            "PCH": regs["pc"],
+            # GBCTR words JR's internal address "PCH": the die drives {PCH, $00} (rung 5)
+            "PCH": regs["pc"] & 0xFF00,
             "rr": regs[PAIRS[op >> 4 & 3]],
         }[cycle["addr"]]
         idu = cycle["idu"]
