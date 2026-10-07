@@ -1,0 +1,27 @@
+name: CI
+
+# Minimal by design (private repo: Actions minutes cost money): one interpreter, PyPy, on pushes
+# to master and on pull requests. The corpora and simulators (fetched references, MAME, GHDL,
+# dmg-sim) are not here; tests that need them skip, and `pytest -m slow` runs them locally.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: pypy3.11
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest -q -m "not slow"
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .

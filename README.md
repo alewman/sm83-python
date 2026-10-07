@@ -20,8 +20,8 @@ changed relative to the brief, and what is left: [docs/build-log.md](docs/build-
 from sm83_python import SM83
 
 memory = bytearray(0x10000)
-cpu = SM83(memory.__getitem__, memory.__setitem__)   # idle=..., stop=... are optional
-cycles = cpu.step()   # M-cycles consumed == bus callbacks made
+cpu = SM83(memory.__getitem__, memory.__setitem__)  # idle=..., stop=... are optional
+cycles = cpu.step()  # M-cycles consumed == bus callbacks made
 ```
 
 The shape follows [z80-python](https://github.com/alewman/z80-python): host-owned memory passed in
