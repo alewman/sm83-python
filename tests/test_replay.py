@@ -133,6 +133,22 @@ def test_the_instruction_after_a_halt_wake_is_not_cycle_checked():
     assert result.skipped_cycle_checks == 2
 
 
+def test_a_halt_woken_without_a_dispatch_leaves_the_next_instruction_to_run_next():
+    # IME is off: MAME's next line is the byte after the HALT, about to execute (INC A); the
+    # core's wake step fetches and runs it, so the replay wakes the core in the next group.
+    program = rom(bytes([0x76, 0x3C, 0x00]))
+    regs_a2 = REGS.replace("1 B0", "2 10", 1)  # INC A: A = 2, F = C only
+    trace = [
+        line(0x100, REGS, 1, 0, 1000),  # HALT
+        line(0x101, REGS, 1, 1, 9000),  # INC A, woken by VBlank (IF = 1)
+        line(0x102, regs_a2, 1, 1, 9004),
+        line(0x103, regs_a2, 1, 1, 9008),
+    ]
+    result = run(program, trace)
+    assert result.ok, result.divergence and result.divergence.describe()
+    assert result.compared == 3 and result.skipped_cycle_checks == 2
+
+
 def test_missing_entry_point_is_an_error():
     with pytest.raises(ValueError, match="entry point"):
         replay(rom(b""), parse_trace([line(0x0, REGS, 0, 0, 0)]))

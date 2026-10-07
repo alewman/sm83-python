@@ -3,15 +3,16 @@
 
 Builds the all-opcodes ROM (scripts/die_programs.py), runs it on the core behind a model of
 the die testbench's mock SoC, runs it on the die model (scripts/die_run.py), and compares the
-two M-cycle sequences case by case: kind (read, write or internal) and address always, data
+two M-cycle sequences case by case (``--dmgsim LOG`` swaps the VHDL model for msinger's
+independent netlist simulation, scripts/dmgsim_run.py): kind (read, write or internal) and address always, data
 for reads and writes. The comparison resynchronises at the start of every case, so one
 disagreement does not hide the rest. The die is die-traced, so where it and the core disagree
 the die decides, unless it also disagrees with a hardware-verified test.
 
 HALT cases need an interrupt raised at a chosen moment, which the mock SoC cannot do: both
 sides get the same request ``k`` M-cycles after the fetch of a named instruction. While the
-die's CPU clock is gated (it is, while halted) its rows are labelled and only compared for
-being internal cycles.
+die's CPU clock is gated (it is, while halted) its rows are labelled and the core must make an
+internal cycle at $0000, as the die does.
 
     python scripts/die_compare.py [--work DIR] [--rerun] [--show N] [--detail CASE]
 """
@@ -30,6 +31,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from die_programs import build  # noqa: E402
 from die_run import run_die  # noqa: E402
+from dmgsim_rows import read_rows as read_dmgsim  # noqa: E402
 
 from sm83_python import SM83, CPUState  # noqa: E402
 
@@ -43,6 +45,7 @@ class MockSoc:
         self.rom = rom
         self.memory = bytearray(0x10000)
         self.rows: list[Row] = []
+        self.written: set[int] = set()  # WRAM the program has written: the rest is power-on junk
         self.triggers = triggers or {}  # fetch address -> (cycles later, IF mask) to raise IF
         self.due: list[tuple[int, int]] = []  # (row index, IF mask) still to raise
         self.cpu = SM83(self.read, self.write, self.idle)
@@ -73,7 +76,10 @@ class MockSoc:
         if self.cpu.idu == 1 and address in self.triggers:  # a fetch that starts a countdown
             after, mask = self.triggers[address]
             self.due.append((len(self.rows) + after, mask))
-        self._row("read", address, value)
+        unwritten = 0xC000 <= address < 0xE000 and address not in self.written
+        self._row(
+            "read", address, None if unwritten else value
+        )  # junk on a real chip: not compared
         return value
 
     def write(self, address: int, value: int) -> None:
@@ -81,6 +87,7 @@ class MockSoc:
             self.cpu.if_ = value & 0x1F
         elif 0xC000 <= address < 0xE000 or address >= 0xFF80:
             self.memory[address] = value
+            self.written.add(address)
         self._row("write", address, value)
 
     def idle(self, address: int) -> None:
@@ -134,13 +141,15 @@ def starts(rows: list, cases: list[dict], is_fetch) -> list[int]:
 
 def compare_rows(ours: Row, theirs) -> str | None:
     """How a core row differs from a die row, or None."""
-    if not theirs[4]:  # the die's CPU clock is stopped: halted, no bus to compare
-        return None if ours[0] == "internal" else f"die halted, core made a {ours[0]} cycle"
+    if not theirs[4]:  # the die's CPU clock is stopped: halted, driving $0000 and nothing else
+        if ours[0] != "internal":
+            return f"die halted, core made a {ours[0]} cycle"
+        return None if ours[1] == 0 else f"halted address {ours[1]:04X}, die $0000"
     if ours[0] != theirs[0]:
         return f"kind {ours[0]} vs die {theirs[0]}"
     if ours[1] != theirs[1]:
         return f"address {ours[1]:04X} vs die {theirs[1]:04X}"
-    if ours[0] != "internal" and theirs[2] is not None and ours[2] != theirs[2]:
+    if None not in (ours[2], theirs[2]) and ours[2] != theirs[2]:
         return f"data {ours[2]:02X} vs die {theirs[2]:02X}"
     return None
 
@@ -174,6 +183,9 @@ def main() -> int:
     parser.add_argument("--show", type=int, default=25, help="cases to list")
     parser.add_argument("--detail", help="print a case (name prefix) side by side")
     parser.add_argument("--skew", type=int, default=0, help="shift the core's interrupt requests")
+    parser.add_argument(
+        "--dmgsim", type=Path, help="compare with a dmg-sim probe log (scripts/dmgsim_run.py)"
+    )
     args = parser.parse_args()
 
     builder = build()
@@ -192,10 +204,13 @@ def main() -> int:
             for address, (after, mask) in triggers_of(cases).items()
         )
     )
-    if args.rerun or not csv_path.exists():
-        print(f"running the die model for {len(core) + 60} M-cycles ...")
-        run_die(rom_path, csv_path, len(core) + 60, inject_path)
-    die = read_die(csv_path)
+    if args.dmgsim:
+        die = read_dmgsim(args.dmgsim)  # same row shape as the VHDL model's
+    else:
+        if args.rerun or not csv_path.exists():
+            print(f"running the die model for {len(core) + 60} M-cycles ...")
+            run_die(rom_path, csv_path, len(core) + 60, inject_path)
+        die = read_die(csv_path)
 
     at_core = starts(core, cases, lambda r: r[0] == "read" and r[3] == 1)
     at_die = starts(die, cases, lambda r: r[3] and r[0] == "read")

@@ -192,9 +192,11 @@ def test_halt_ime1_no_pending_halts_then_dispatches_on_wake():
     assert host.cpu.step() == 2 and host.cpu.halted and host.cpu.pc == 0x0201
     assert host.log == [("read", 0x0200, 1), ("read", 0x0201, 0)]
     host.log.clear()
-    assert host.run(3) == [1, 1, 1] and host.log == [("internal", 0x0201, 0)] * 3
+    # a halted CPU drives $0000 and nothing else, one cycle per step (die model, dmg-sim)
+    assert host.run(3) == [1, 1, 1] and host.log == [("internal", 0x0000, 0)] * 3
     host.cpu.request_interrupt(0)
-    assert host.cpu.step() == 6  # one halted cycle, then the five-cycle dispatch
+    # IF rose in an earlier cycle: the CPU resumes in the next one, which starts the dispatch
+    assert host.cpu.step() == 5
     assert host.cpu.pc == 0x40 and not host.cpu.halted
     assert host.memory[0xC0FF] == 0x02 and host.memory[0xC0FE] == 0x01  # returns after HALT
 
@@ -204,8 +206,10 @@ def test_halt_ime0_no_pending_wakes_and_continues_without_dispatch():
     host.load(0x0200, 0x76, 0x3C)  # HALT; INC A
     host.cpu.step()
     host.cpu.request_interrupt(0)
+    host.log.clear()
+    # the wake costs no idle cycle: the byte after the HALT is fetched again at once
     assert host.cpu.step() == 1 and not host.cpu.halted
-    host.cpu.step()
+    assert host.log == [("read", 0x0201, 1)]
     assert host.cpu.a == 1 and host.cpu.pc == 0x0202 and host.cpu.if_ == 0x01
 
 

@@ -233,14 +233,13 @@ class CoreMixin:
             self.ei_pending = False
         pending = self.interrupt_pending  # sampled after the previous cycle's callback
         if self.halted:
-            self._idle(self.pc)
             if not pending:
+                self._idle(0x0000)  # a halted CPU drives $0000 and nothing else (rung 5)
                 return 1
+            # The interrupt flag rose in an earlier cycle: the CPU resumes in this one, with no
+            # idle cycle first (dmg-sim wakes in the cycle after IF rises). It dispatches if IME
+            # is on, else fetches the byte after the HALT again.
             self.halted = False
-            if not effective_ime:
-                return 1  # wake without dispatch: the next step fetches normally
-            self._dispatch()
-            return self._cycles - start
         if effective_ime and pending:
             self._dispatch()
             return self._cycles - start

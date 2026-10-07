@@ -201,11 +201,14 @@ def replay(
             took = following.pc in VECTORS and state.pc != following.pc
             if kind is BoundaryKind.HALT_IDLE:
                 halted_cycles = True
+                if not took:
+                    # woken without a dispatch (IME off): MAME's next line is the byte after the
+                    # HALT, about to execute. The core's wake step fetches and runs it, so leave
+                    # the core halted; the next group wakes it (its IF is MAME's).
+                    break
                 enabled = state.ie & 0x1F
-                woke = following.if_ & enabled  # still set when MAME woke without dispatching
-                if took:  # the source MAME served, plus the higher ones left pending after it
-                    woke |= 1 << ((following.pc - 0x40) // 8)
-                cpu.if_ |= woke or enabled & -enabled  # else: the lowest enabled source
+                # the source MAME served, plus the higher ones left pending after it
+                cpu.if_ |= (following.if_ & enabled) | 1 << ((following.pc - 0x40) // 8)
             elif took and kind is BoundaryKind.INSTRUCTION and state.ime:
                 cpu.request_interrupt((following.pc - 0x40) // 8)
                 interrupts += 1
