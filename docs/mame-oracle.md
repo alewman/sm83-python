@@ -102,21 +102,24 @@ and lacks the HALT bug, an EI-sequence case, and IE-push cancellation.
 
 ## Use
 
-1. Rung 4 of [validation.md](validation.md), **replay**: real code reads I/O
-   registers (LY, STAT, DIV, IF, JOYP) whose values come from the board, so a
-   core in the minimal harness diverges from MAME at the first `LDH A,($44)`.
-   Make the replay board-free by adding one more watchpoint to the recipe,
-   `wpset ff00,100,r,1,{logerror "R %X %X %d\n",wpaddr,wpdata,totalcycles; g}`
-   (I/O, HRAM and IE reads), and have the harness answer every read in
-   $FF00–$FFFF from that log, in order, instead of from its own model. Writes
-   are compared, not obeyed. Then compare `PC A F B C D E H L SP` per
-   instruction from PC = $0100 and the `totalcycles` deltas ÷ 4. Not yet run:
-   the extra watchpoint's volume (every HRAM read) should be measured first; if
-   it is large, restrict it to $FF00–$FF7F and $FFFF and let the harness keep
-   HRAM.
+1. Rung 4 of [validation.md](validation.md), **replay** (done 2026-10-07): real code reads I/O
+   registers (LY, STAT, DIV, IF, JOYP) whose values come from the board, so a core in the
+   minimal harness diverges from MAME at the first `LDH A,($44)`. `scripts/mame_trace.py --io`
+   adds the watchpoint `wpset ff00,100,r,1,{logerror "R %X %X %d\n",wpaddr,wpdata,totalcycles; g}`
+   (every read of `$FF00`-`$FFFF`; about a quarter of the log lines). `sm83_python.replay` then
+   answers the reads in `$FF00`-`$FF7F` and `$FFFF` from that log, in order, lets the core run the
+   cartridge, RAM and HRAM itself, and compares `PC A F B C D E H L SP IE` and the M-cycle count
+   (MAME `totalcycles` deltas / 4) after every instruction. Writes are not obeyed. IF is the
+   board's: it is set from MAME's line, and an interrupt MAME took (a jump to `$40`-`$60`) is
+   raised with `request_interrupt` just before the core would dispatch it.
+   Cost: MAME takes about 8 s of wall time per 3 emulated seconds with the debugger tracing, and
+   the replay runs about 70,000 instructions a second on CPython.
 2. The first divergence is a lead, not a verdict: look it up in
-   [undocumented-behavior.md](undocumented-behavior.md), then ask a higher tier.
-3. Interrupt entries are visible in the trace as a jump to $40–$60 without a
-   call; the replayed core must take them at the same instruction, which only
-   works if IF/IE reads and the core's own sampling agree. Divergence there is
-   expected on the cases MAME gets wrong (table above).
+   [undocumented-behavior.md](undocumented-behavior.md), then ask a higher tier. The one
+   systematic difference found is an accounting one: after a HALT is woken MAME shows the
+   first handler instruction one M-cycle short (e.g. `JP nn` as 3, not 4). The length of a HALT
+   depends on when the board raises IF, which a trace cannot give, so the one cycle cannot be
+   placed; the replay skips the cycle check for that group and says so.
+3. Interrupt entries are visible in the trace as a jump to `$40`-`$60` without a call; the replayed
+   core takes them at the same instruction. MAME gets three CPU corners wrong (table above), none
+   of which came up in the programs replayed.

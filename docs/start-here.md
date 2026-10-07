@@ -162,6 +162,12 @@ bits of IF read 1 on hardware (Mooneye `if_ie_registers`; board detail).
 | 0 | yes | **HALT bug**: no halt, and the next fetch does not increment PC, so the byte after HALT is read twice (`rst` after it pushes its own address; nitro2k01). `EI; HALT` with a pending interrupt dispatches and returns to the HALT (SameSuite `interrupt/ei_delay_halt`). |
 
 SameBoy states the bug also happens on CGB in both modes (comment in `halt()`).
+
+Bus structure of these cases (die models, rung 5; cycle by cycle in [timing.md](timing.md)
+"HALT"): a HALT that halts takes two M-cycles (the fetch, then a read of the next byte without
+moving PC), halted cycles drive `$0000`, and the CPU resumes in the cycle after IF rises. The
+HALT bug takes one cycle: the byte after the HALT is fetched again as the next instruction's own
+fetch.
 Wake-up timing differs between DMG and CGB in SameBoy (`GB_cpu_run`: extra
 2 T-cycles on DMG) and Mooneye's `halt_ime1_timing2-GS` passes on DMG/SGB only;
 the core exposes the halted state and lets the board own the sub-M-cycle

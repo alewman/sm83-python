@@ -1,5 +1,9 @@
 # Handoff: build `sm83-python`, the Game Boy's CPU core
 
+> **Built 2026-10-07.** Rungs 0-5 pass; see [build-log.md](build-log.md) for what was built, what
+> the oracles changed relative to this brief (HALT, halted and locked bus cycles, `JR`), and what is
+> left. This document is kept as the task as it was given.
+
 ## Context you are inheriting
 
 The family's shape is **chips are cores, boards compose cores**. Each core is
@@ -124,8 +128,9 @@ cycles = cpu.step()   # M-cycles consumed == number of callbacks made
 - The board advances its devices **inside** the callbacks (4 T-cycles per
   call, 2 in CGB double speed), never by adding `step()`'s return value on top.
 - The return value equals the number of callbacks. Assert it in tests.
-- A halted or locked CPU makes `step()` perform exactly one `idle(PC)` and
-  return 1; the board loops. HALT wake-up and dispatch follow timing.md.
+- A halted or locked CPU makes `step()` perform exactly one idle cycle and return 1; the board
+  loops. (Built: the address is **`$0000`**, not PC, in both states, as both die models drive it;
+  see timing.md "HALT".) HALT wake-up and dispatch follow timing.md.
 - **STOP hook**: `SM83(..., stop=callable)`. On `$10` the core calls
   `stop(pending)` (pending = `ie & if_ & 0x1F != 0`) and the board returns
   what happens: enter stop mode, behave as HALT, behave as a 1-byte NOP, or

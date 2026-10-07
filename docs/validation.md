@@ -206,3 +206,31 @@ Each rung is cheaper than the next and earns one claim. Do not reorder.
 
 Rung 6 is the board's acceptance, not this repository's; failures it traces
 to the core come back here as issues or PRs with a failing core-level test.
+
+## Results (2026-10-07)
+
+Run on this machine against the core as built (CPython 3.14 and PyPy 3.11, both green).
+
+| Rung | Result | Tier of the claim |
+| --- | --- | --- |
+| 0 | Generated opcode table = GBCTR's `opcodes.toml` mnemonics and categories = `gb-opcodes` lengths (cross-checked by `scripts/gen_opcode_table.py`); for all 514 opcode paths the core's (kind, address, IDU direction) per M-cycle equals GBCTR's evaluated on random states (mutation-checked); readability test (one mnemonic family per handler, a source on every headline, module ownership) | research documentation |
+| 1 | SingleStepTests sm83: **498 files, 498,000 cases** pass (reads, writes, data, order; internal cycles by kind; `ime`, `ei`); adtennant v2: 241 files pass (registers and RAM). `$FFFF` cases need `ie` seeded from the corpus's RAM because the core owns `$FFFF` | emulator-derived (detector) |
+| 2 | blargg `cpu_instrs` 01, 03-11: `Passed` (0.1-4.7 s each on CPython); 02 prints `Timer doesn't work` / `Failed #4` as documented (the harness has no TIMA) | hardware-verified |
+| 3 | Mooneye: `instr/daa`, `bits/reg_f`, `interrupts/ie_push`, `if_ie_registers`, `ei_sequence`, `ei_timing`, `rapid_di_ei`, `intr_timing`, `reti_intr_timing` pass (the harness completes serial transfers and counts DIV); `div_timing` and `pop_timing` also pass. Of the 75 acceptance ROMs, 15 pass board-free; the rest need TIMA, the PPU or OAM DMA | hardware-verified |
+| 4 | MAME replay (`scripts/mame_trace.py --io`, `sm83_python.replay`): **no divergence** in PC, A, F, B, C, D, E, H, L, SP, IE, I/O read order or non-HALT cycle counts over blargg `03` (0.73 M instructions) and six commercial games (Kirby's Dream Land 2.62 M, Metroid II 1.11 M, Castlevania 0.74 M, Bubble Bobble 0.56 M, Dr. Mario 0.54 M, Super Mario Land 0.24 M; about 2,900 HALT wake-ups and 544 interrupts MAME took outside HALT). Mutation-checked. MAME bills one cycle less to the first instruction after a HALT wake-up; a trace cannot place it, so that one group is not cycle-checked | emulator-derived (detector) |
+| 5 | Gekkio's VHDL SM83 and msinger's dmg-sim each agree with the core on **all 533 cases / 11,316 M-cycles** of the all-opcodes ROM (kind, address and data of every cycle, internal cycles included); 15 HALT-entry scenarios on the VHDL model; 24 timer-woken HALT scenarios on dmg-sim (2-15 halted cycles, IME on and off). The comparison changed the core in five places (below) | die-traced (two independent tracings) |
+
+What rung 5 changed (each a deviation from this document's earlier text, now corrected in
+[timing.md](timing.md) and [undocumented-behavior.md](undocumented-behavior.md)):
+
+1. `JR`'s internal cycle drives `{PCH, $00}`, not PC (GBCTR's "PCH" is literal).
+2. A locked CPU drives `$0000` on every cycle.
+3. A halted CPU drives `$0000` on every cycle (not PC), and resumes in the cycle after IF rises.
+4. HALT that halts takes two cycles (fetch, then a read of the next byte without moving PC); the
+   HALT bug takes one; the decision uses the interrupt state sampled before HALT's own fetch.
+5. `EI; HALT` with an interrupt pending: HALT's cycle is the dispatch's discarded fetch.
+
+Limits of the die checks: the VHDL model on Gekkio's mock SoC never wakes a halted CPU (the
+interrupt latch that does it is clocked by a clock the mock gates), so wake-up rests on dmg-sim;
+STOP is not tested on either (no joypad or KEY1 in the mock; dmg-sim could, not done); the
+mock SoC's `reti_intr_timing` failure noted above is unexplained and not the core's.

@@ -7,19 +7,36 @@ whole system-on-a-chip; the CPU inside it is the SM83, and this repository is
 only the CPU. The board, [gameboy-python](../gameboy-python), owns everything
 else.
 
-**Status (2026-10-05): groundwork only, no core code.** The documents in
-[`docs/`](docs/README.md) gather what the build needs, every fact with its
-source and tier: the instruction set, every M-cycle with its address,
-interrupts, HALT and STOP, the quirks and contradictions, the oracles with
-measured results, a verified MAME recipe, and the brief for the session that
-builds the core ([docs/handoff-brief.md](docs/handoff-brief.md)).
+**Status (2026-10-07): built, local.** The core passes rungs 0-5 of
+[docs/validation.md](docs/validation.md): the bus schedule of every opcode against GBCTR;
+SingleStepTests sm83 (498,000 cases); blargg `cpu_instrs` and the board-free Mooneye ROMs; about 6
+million instructions of real code replayed against MAME; and cycle-for-cycle agreement with **two
+independent die-traced models** (Gekkio's VHDL SM83 and msinger's dmg-sim) on every opcode, both
+paths of every conditional, and HALT being woken. Rung 6 (blargg `instr_timing`, `halt_bug`,
+`oam_bug`, Mooneye's timing tests, Gambatte) is the board's. What was built, what the oracles
+changed relative to the brief, and what is left: [docs/build-log.md](docs/build-log.md).
 
-The core will follow [z80-python](https://github.com/alewman/z80-python)'s
-shape: host-owned memory passed in as callables, `step()` returning M-cycles,
-no dependencies, CPython and PyPy (Python 3.11+). Unlike z80-python it will make
-**one bus callback per M-cycle, internal cycles included**, because the Game
-Boy's hardware reacts to the address the CPU drives even when it neither reads
-nor writes (the DMG's OAM corruption bug).
+```python
+from sm83_python import SM83
+
+memory = bytearray(0x10000)
+cpu = SM83(memory.__getitem__, memory.__setitem__)   # idle=..., stop=... are optional
+cycles = cpu.step()   # M-cycles consumed == bus callbacks made
+```
+
+The shape follows [z80-python](https://github.com/alewman/z80-python): host-owned memory passed in
+as callables, `step()` returning M-cycles, no dependencies, CPython and PyPy (Python 3.11+). Unlike
+z80-python it makes **one bus callback per M-cycle, internal cycles included**
+(`idle(address)`, and `cpu.idu` says whether the increment/decrement unit moved that address),
+because the Game Boy's hardware reacts to the address the CPU drives even when it neither reads nor
+writes (the DMG's OAM corruption bug). `ie` and `if_` are attributes of the core, which owns
+`$FFFF`; the board raises interrupts with `cpu.request_interrupt(bit)` and answers `STOP` through a
+hook. The host advances its devices inside the callbacks, never by adding `step()`'s return value.
+
+```sh
+python -m sm83_python ROM.gb [--boot BOOT] [--max-cycles N] [--trace out.jsonl] [--debug]
+python -m pytest -m "not slow"     # seconds; plain `pytest` adds the full corpora and simulators
+```
 
 ## What is fetched
 
@@ -49,7 +66,10 @@ No sudo.
 | `scripts/fetch_references.py` | the pinned references, test ROMs and tool bundles |
 | `scripts/build_referees.py` | builds SameBoy's headless tester and free boot ROMs, a venv for Gekkio's die-traced VHDL SM83, and msinger's dmg-sim |
 | `scripts/gbctr_timing.py` | GBCTR's per-M-cycle tables (address, data, IDU, ALU, access kind) as JSON |
-| `scripts/mame_trace.py` | MAME 0.285 per-instruction trace and serial output of a Game Boy ROM, with a free boot ROM ([docs/mame-oracle.md](docs/mame-oracle.md)) |
+| `scripts/mame_trace.py` | MAME 0.285 per-instruction trace and serial output of a Game Boy ROM, with a free boot ROM; `--io` adds the I/O read log the replay needs ([docs/mame-oracle.md](docs/mame-oracle.md)) |
+| `scripts/gen_opcode_table.py` | generates `src/sm83_python/_opcodes.py` from GBCTR's `opcodes.toml` and `gb-opcodes`, cross-checked |
+| `scripts/die_programs.py`, `die_run.py`, `die_compare.py`, `die_halt.py` | the all-opcodes ROM, a bus-dump testbench for Gekkio's VHDL SM83, and the cycle-for-cycle comparison with the core |
+| `scripts/dmgsim_run.py`, `dmgsim_rows.py`, `dmgsim_halt.py` | the same against msinger's dmg-sim, plus HALT woken by the timer |
 
 ## Licence
 

@@ -29,19 +29,24 @@ Gambatte `hwtests/undef_ops/undef_op_XX_dmg08_cgb04c_out01` (all eleven minus
 print 03 never runs; DMG and CGB). *Explanation:* SonoSooS "Opcode holes"
 (the decode ROM yields no fetch). SameBoy models it as "halt with IE = 0",
 which has the same visible effect. Implement as a `locked` state the host can
-query; do not raise.
+query; do not raise. **Bus (rung 5, both die models):** after the locking fetch every M-cycle
+is idle with the address bus at `$0000`.
 
-**U4. HALT bug.** HALT with IME = 0 and `IE & IF & $1F` ≠ 0 does not halt and
-inhibits the PC increment of the next fetch: the following byte is fetched
-twice; `RST` after it pushes its own address; a second `HALT` after it spins
-forever re-reading itself. *Hardware:* blargg `halt_bug.gb` (needs a timer:
+**U4. HALT bug.** HALT with IME = 0 and `IE & IF & $1F` ≠ 0 (sampled before the HALT's own
+fetch) does not halt and inhibits the PC increment of the next fetch: the following byte is
+fetched twice; `RST` after it pushes its own address; a second `HALT` after it spins
+forever re-reading itself. **Bus (rung 5, VHDL die):** HALT makes no cycle of its own then; the
+following byte is simply fetched at PC, again at PC, then PC + 1, so a 1-cycle instruction
+there runs twice. *Hardware:* blargg `halt_bug.gb` (needs a timer:
 board), nitro2k01 `double-halt-cancel` (README describes the hardware result).
 *Emulator:* SameBoy `halt()` (sets `halt_bug`, consumed at the next fetch).
 SameBoy says it also happens on CGB in both modes.
 
 **U5. `EI; HALT` with an interrupt pending.** The interrupt is serviced, and
 the handler returns to the HALT, which executes again (the PC-increment
-inhibition meets the dispatch's PC decrement). *Hardware:* SameSuite
+inhibition meets the dispatch's PC decrement). **Bus (rung 5, VHDL die):** HALT's cycle is the
+dispatch's discarded fetch (at the next byte, PC not advanced), then PC goes back onto the
+HALT and the usual internal cycles and pushes follow; the core carries this as `halt_dispatch`. *Hardware:* SameSuite
 `interrupt/ei_delay_halt.asm`, cited by Pan Docs `halt.md`. If HALT is also
 followed by `RST`, the EI case wins (Pan Docs).
 
@@ -49,7 +54,8 @@ followed by `RST`, the EI case wins (Pan Docs).
 dispatch happens at the HALT and returns to it (SameBoy `pc--`; SonoSooS table
 "Jump to vector on fetch of HALT opcode"). Mooneye `halt_ime1_timing`.
 
-**U7. HALT wake-up timing differs DMG vs CGB.** SameBoy adds 2 T-cycles on
+**U7. HALT wake-up timing differs DMG vs CGB** (and the DMG wake itself is settled, see
+[timing.md](timing.md) "HALT": the CPU resumes in the cycle after IF rises, dmg-sim, 24 cases). SameBoy adds 2 T-cycles on
 leaving HALT on DMG only; Mooneye `halt_ime1_timing2-GS` and `di_timing-GS`
 pass on DMG/MGB/SGB/SGB2 and fail on CGB/AGB/AGS. Sub-M-cycle: the board's,
 but the core must report each halted M-cycle so the board can place it.
@@ -80,8 +86,11 @@ covered by Gambatte `speedchange` (hardware-captured).
 "The bus". *Sources:* GBCTR's tables (single author, Gekkio, who also wrote
 the VHDL model: not independent), Pan Docs `OAM_Corruption_Bug.md` (which
 counts `POP` as triggering the bug 3 times and `PUSH` 4 times), blargg
-`oam_bug` (hardware-verified, DMG, board). dmg-sim's independent SM83 netlist
-is the way to confirm the exact addresses; not done yet.
+`oam_bug` (hardware-verified, DMG, board). **Settled 2026-10-07 (rung 5):** both die-traced
+models, Gekkio's VHDL and msinger's independently traced dmg-sim, give the same internal-cycle
+addresses as GBCTR's tables for all 505 opcodes (both paths), all 256 CB opcodes and the
+interrupt dispatch, with one correction: `JR`'s internal cycle drives `{PCH, $00}`, not PC.
+The OAM-bug corruption pattern itself is the board's (rung 6, `oam_bug`).
 
 **U13. A possible NMI.** SonoSooS lists "NMI (0x80)" and a "bugged interrupt
 (0x00)" in the dispatch priority. No Game Boy model wires an NMI; nothing here
@@ -89,7 +98,9 @@ tests it. Do not implement; record if the die models show it.
 
 **U14. Interrupt dispatch from HALT on wake costs a discarded fetch.** SonoSooS
 HALT table ("wakeup from HALT mode, dummy fetch (with increment)"). Mooneye
-`halt_ime1_timing` measures it on a board.
+`halt_ime1_timing` measures it on a board. **dmg-sim (rung 5):** there is no cycle of its own:
+the cycle after IF rises *is* the dispatch's discarded fetch (IME = 1) or the refetch of the byte
+after the HALT (IME = 0).
 
 ## Contradictions between sources (C)
 
@@ -98,7 +109,8 @@ the previous cycle's address on `---` cycles ("For convenience, we often just
 use the last address generated", its README); GBCTR writes the IDU register or
 $0000 (e.g. `INC BC` M2: corpus PC, GBCTR BC). *Rule:* compare reads and writes
 (address, data, order) against the corpus; ignore its address on internal
-cycles; take internal addresses from GBCTR, to be confirmed against dmg-sim.
+cycles; take internal addresses from GBCTR. **Confirmed by both die models** (rung 5), except
+that GBCTR's "PCH" on `JR` means `{PCH, $00}`.
 
 **C2. Pan Docs' "two wait states" vs SonoSooS' IDU cycles in dispatch.**
 Pan Docs `Interrupts.md` describes the first two dispatch M-cycles as "nothing
@@ -136,10 +148,10 @@ only; never for HALT, EI, or dispatch corners.
 
 ## Open items
 
-- Confirm U12/C1 internal addresses and the halted-cycle bus (timing.md HALT)
-  against dmg-sim (FST dump of the SM83 address bus around `INC BC`,
-  `ADD HL,BC`, `RET`, `PUSH`, dispatch, HALT).
-- Whether the corpus's `ime`/`ei` semantics match the core's EI model on the
-  case where EI is followed by an interrupt check (C4).
-- STOP on DMG: no test pinned here exercises stop mode; MAME and SameBoy are
-  the only references.
+- STOP on DMG: no test pinned here exercises stop mode; MAME and SameBoy are the only
+  references. The core implements the board hook and the decode; the outcome is the board's.
+- The DMG/CGB difference in leaving HALT (U7) and the OAM bug's effect (U12) are judged on the
+  board, rung 6.
+- Whether the corpus's `ime`/`ei` semantics match the core's EI model on the case where EI is
+  followed by an interrupt check (C4): the core passes all 498,000 cases comparing `ime` and `ei`
+  in final states, and Mooneye `ei_sequence`, `ei_timing`, `rapid_di_ei` (hardware-verified).
