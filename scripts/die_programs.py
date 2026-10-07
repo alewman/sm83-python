@@ -174,6 +174,36 @@ def add_pending_halt_cases(b: Builder) -> None:
     b.case("HALT after EI, pending", [*IE_ON, *IF_ON, 0xFB, 0x76, 0x3C, 0x00], pre=store_next)
 
 
+def add_timer_halt_cases(b: Builder) -> None:
+    """HALT woken by the timer, on a full SoC (dmg-sim only; the mock SoC has no timer).
+
+    TIMA = $FC overflows four timer ticks (4 M-cycles each at 262144 Hz) after TAC enables it,
+    which raises IF bit 2. Padding NOPs shift the HALT one M-cycle at a time across that moment, so the
+    cases run from "the interrupt was already pending at the HALT" through "it arrives while the
+    HALT is fetching" to "it wakes a halted CPU". ``tac_offset`` is the offset of the instruction
+    that starts the timer: the comparison raises the core's IF a measured number of M-cycles
+    after its fetch, taken from the simulator's own IF register.
+    """
+    for ime in (False, True):
+        for pad in range(0, 12):
+            setup = [
+                0x3E, 0x04, 0xE0, 0xFF,  # IE = timer
+                0xAF, 0xE0, 0x0F, 0xE0, 0x06,  # IF = 0 ; TMA = 0
+                0x3E, 0xFC, 0xE0, 0x05,  # TIMA = $FC
+            ]  # fmt: skip
+            # DIV = 0 first: the timer's first tick then comes a fixed time after TAC enables it
+            start_timer = [0xE0, 0x04, 0x3E, 0x05, 0xE0, 0x07]  # TAC = enable, 262144 Hz
+            enable = [0xFB, 0x00] if ime else []
+            body = [*setup, *start_timer, *enable, *([0x00] * pad), 0x76, 0x3C, 0x00]
+            meta = {
+                "timer_halt": True,
+                "halt_offset": len(setup) + len(start_timer) + len(enable) + pad,
+                "tac_offset": len(setup) + 4,  # the LDH (TAC),A after LDH (DIV),A ; LD A,5
+            }
+            b.case(f"timer HALT ime={int(ime)} pad={pad}", body, pre=store_next, meta=meta)
+            b.case("timer cleanup", [0xAF, 0xE0, 0x07, 0xE0, 0x0F, 0xE0, 0xFF])  # TAC, IF, IE = 0
+
+
 def build_single(add) -> Builder:
     """A ROM with one scenario and a closing ``JR $``; the die never leaves a halted HALT in
     the mock SoC, so each HALT scenario gets a simulation of its own."""
