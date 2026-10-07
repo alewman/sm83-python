@@ -10,8 +10,10 @@ Read in this order.
 | [validation.md](validation.md) | Every oracle by tier with pins; what was run here and what it showed; the die-traced models; the rung plan |
 | [mame-oracle.md](mame-oracle.md) | The verified MAME 0.285 recipe with a free boot ROM, its trace format, and how MAME scores on the CPU tests |
 | [handoff-brief.md](handoff-brief.md) | The task for the session that builds the core: decisions, the bus contract, the harness, rungs, tooling, open decisions |
+| [build-log.md](build-log.md) | What was built, how to run the gates, where the oracles overruled the brief (HALT, the halted and locked bus, `JR`), and what is left |
+| [trace-schema.md](trace-schema.md) | The JSON Lines trace format: one record per processor boundary, every M-cycle with its address and IDU direction |
 
-## Findings made while gathering (2026-10-05)
+## Findings (1-6 while gathering, 2026-10-05; 7-9 from the build, 2026-10-07)
 
 These came from running things, not from any single document:
 
@@ -41,3 +43,13 @@ These came from running things, not from any single document:
 6. **GBCTR's `mem_rw` row is a diagram label**, one cycle early and once with
    SPH/SPL swapped; the data row and pseudocode are consistent, so the
    extractor reads those.
+7. **Both die-traced models agree with the core** (2026-10-07, rung 5): 533 cases, 11,316
+   M-cycles, every opcode and both paths, kind, address and data of every cycle. They corrected
+   the bus in five places (`JR`, the halted and locked address, HALT's two cycles, the wake, and
+   `EI; HALT`); see [build-log.md](build-log.md).
+8. **dmg-sim's external address pins are not the CPU's bus**: on a cycle with no cartridge access
+   they hold a stale address with A15 forced high. Probe the core's own port (`cpu_port_a`) to see
+   the IDU addresses. It also stops `phi` while the CPU is halted, so cycles must be counted on a
+   time grid, not by clock edges.
+9. **Gekkio's mock SoC cannot wake a halted CPU**, because the clock gating it models stops the
+   clock of the interrupt latch that does the waking. dmg-sim can.

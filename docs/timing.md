@@ -22,6 +22,14 @@ the last address generated", `src/sm83/README.MD`), GBCTR writes the IDU's
 register or $0000. Compare reads and writes against the corpus; take internal
 addresses from GBCTR (contradiction C1).
 
+**Settled against the die (2026-10-07, rung 5).** Both die-traced models (Gekkio's
+VHDL SM83 and msinger's dmg-sim) agree with the core, bus cycle by bus cycle, on
+all 533 cases of an all-opcodes ROM: every opcode and both paths of every
+conditional, all 256 CB opcodes, `JR` at awkward low addresses, three interrupt
+dispatches. GBCTR's internal-cycle addresses are right everywhere except that its
+`JR` row says "PCH": that is literal, see the table. Everything else in the
+tables below was confirmed as written.
+
 ## The table, by category
 
 Row format: one entry per M-cycle after the opcode fetch, ending with the
@@ -58,7 +66,7 @@ documented length (the count a programmer sees).
 | `JP nn` | 4 | `R@PC+`, `R@PC+`, `I@$0000`, `F@PC+` (PC = WZ) |
 | `JP cc,nn` | 4 / 3 | taken as `JP nn`; not taken: `R@PC+`, `R@PC+`, `F@PC+` |
 | `JP HL` | 1 | `F@HL+` (PC ← HL + 1) |
-| `JR e` | 3 | `R@PC+`, `I@` "PCH" (GBCTR's wording; the IDU adjusts PCH), `F@WZ+` |
+| `JR e` | 3 | `R@PC+`, `I@{PCH,$00}` (both die models: the high byte of PC after the operand fetch, a zero low byte, e.g. `$2400` when PC = `$2402`), `F@WZ+` |
 | `JR cc,e` | 3 / 2 | taken as `JR e`; not taken: `R@PC+`, `F@PC+` |
 | `CALL nn` | 6 | `R@PC+`, `R@PC+`, `I@SP−`, `W@SP−` (PCH), `W@SP` (PCL), `F@PC+` (PC = WZ) |
 | `CALL cc,nn` | 6 / 3 | taken as `CALL`; not taken: `R@PC+`, `R@PC+`, `F@PC+` |
@@ -66,7 +74,7 @@ documented length (the count a programmer sees).
 | `RET cc` | 5 / 2 | `I@$0000` (condition), then taken: `R@SP+`, `R@SP+`, `I@$0000`, `F@PC+`; not taken: `F@PC+` |
 | `RST n` | 4 | `I@SP−`, `W@SP−` (PCH), `W@SP` (PCL), `F@PC+` (PC = n) |
 | `HALT`, `STOP` | — | not in GBCTR; see below |
-| 11 holes | ∞ | no further bus cycles are documented; the CPU never fetches again |
+| 11 holes | ∞ | the CPU never fetches again; every later M-cycle is idle at `$0000` (both die models) |
 
 `SP−` on the `W@SP−` rows means the write happens at the already decremented
 SP and the IDU decrements again; GBCTR's `idu_op` column has the exact
@@ -116,24 +124,33 @@ delayed-enable flag); compare it.
 
 ## HALT
 
-Entry: one M-cycle that fetches the byte after HALT **without incrementing
-PC** (SonoSooS: HALT's generic fetch is `IR = [PC]`). Then, per the table in
-[start-here.md](start-here.md):
+Settled against the die (rung 5): Gekkio's VHDL SM83 for the entry, msinger's dmg-sim for
+the wake-up. Cycles below are M-cycles of the fetch-first model.
 
-- halted M-cycles: the CPU does nothing; what the address bus shows is not
-  documented (SameBoy advances time without an access). The core reports one
-  internal cycle per halted M-cycle with address PC, flagged as halted, and the
-  board decides what (if anything) that address means. Settle with dmg-sim.
-- wake with IME = 1: a fetch with increment (discarded), then dispatch as above
-  (SonoSooS table "wakeup from HALT mode, dummy fetch (with increment)").
-- wake with IME = 0: the fetched byte executes, PC increments normally.
-- HALT bug (IME = 0, pending at entry): no halted cycles; the next fetch reads
-  the same address again.
+- **Entry that halts**: HALT is **two** cycles. The fetch of the opcode, then one more cycle
+  that reads the next byte as an opcode fetch (`m1`) at PC + 1 *without incrementing PC*
+  (SonoSooS: HALT's generic fetch is `IR = [PC]`). The die then gates the CPU clock.
+- **Halted cycles**: one per M-cycle, no read or write, and the address bus carries **`$0000`**
+  (both models), not PC. A halted `step()` is one `idle($0000)` and returns 1.
+- **Wake**: the CPU resumes in the cycle *after* the one in which IF rises (dmg-sim; 24
+  timer-driven cases, 2 to 15 halted cycles each, IME on and off): there is no idle cycle
+  between the last halted cycle and the next fetch. With IME = 0 it fetches the byte after
+  the HALT again (the dummy fetch is thrown away) and runs it; with IME = 1 that cycle is the
+  dispatch's discarded fetch and the five-cycle dispatch follows.
+- **The decision** to halt uses the interrupt state *before the HALT's own fetch*, like the
+  dispatch decision: an interrupt raised during that fetch is not seen (the die halts), one
+  raised in the cycle before is (the die does not).
+- **HALT bug** (IME = 0, interrupt already pending): HALT is *one* cycle. Its "extra cycle" is
+  the next instruction's own fetch, made without incrementing PC, so the byte after the HALT is
+  fetched twice and executed twice (`INC A` after it runs twice; reads at `$016E, $016E, $016F`).
+- **`EI; HALT` with an interrupt pending** (IME comes on in the HALT's own step): the HALT's cycle
+  is the dispatch's discarded fetch, at the byte after the HALT with PC not advanced; the IDU then
+  puts PC back onto the HALT, which is what the dispatch pushes. The handler returns to the HALT.
 - DMG vs CGB: SameBoy charges 2 extra T-cycles on DMG when leaving HALT
   (`if (gb->halted && !GB_is_cgb(gb) && !gb->just_halted) GB_advance_cycles(gb, 2)`);
   Mooneye `halt_ime1_timing2-GS` passes on DMG/MGB/SGB/SGB2 and fails on
-  CGB/AGB/AGS. Sub-M-cycle, so a board concern; the core's halted-cycle
-  reporting must let the board add it.
+  CGB/AGB/AGS. Sub-M-cycle, so a board concern; the core reports every halted M-cycle so the
+  board can place it. Rung 6 judges the wake against Mooneye and blargg.
 
 ## STOP
 
