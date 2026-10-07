@@ -21,6 +21,7 @@ it too).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sm83_python.cpu import SM83, CPUState
@@ -169,9 +170,13 @@ class Harness:
             return "jump to self"
         return None
 
-    def run(self, max_cycles: int = 100_000_000) -> RunResult:
-        """Step until a stop condition or ``max_cycles`` M-cycles."""
+    def run(
+        self, max_cycles: int = 100_000_000, step: Callable[[], object] | None = None
+    ) -> RunResult:
+        """Step until a stop condition or ``max_cycles`` M-cycles. ``step`` replaces
+        ``cpu.step`` (a debug session's ``step`` records the trace as it goes)."""
         cpu = self.cpu
+        advance = step or cpu.step
         instructions = 0
         reason = "budget"
         while self.cycles < max_cycles:
@@ -183,7 +188,7 @@ class Harness:
                 if found:
                     reason = found
                     break
-            cpu.step()
+            advance()
             instructions += 1
         return RunResult(
             reason,
