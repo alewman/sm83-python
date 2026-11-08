@@ -140,6 +140,11 @@ the wake-up. Cycles below are M-cycles of the fetch-first model.
 - **The decision** to halt uses the interrupt state *before the HALT's own fetch*, like the
   dispatch decision: an interrupt raised during that fetch is not seen (the die halts), one
   raised in the cycle before is (the die does not).
+  The core works in whole M-cycles and cannot place an interrupt within one; the board can.
+  `request_interrupt(bit, halt_sees=True)` from the HALT's fetch callback marks one raised early
+  enough in that cycle for the HALT to see it (real DMG and CGB with a STAT interrupt: Gambatte
+  `halt/late_m0i*_scx2/3`, AGE `halt-m0-interrupt`; the die runs injected for a whole M-cycle
+  from the boundary, like a timer interrupt, which stays the default).
 - **HALT bug** (IME = 0, interrupt already pending): HALT is *one* cycle. Its "extra cycle" is
   the next instruction's own fetch, made without incrementing PC, so the byte after the HALT is
   fetched twice and executed twice (`INC A` after it runs twice; reads at `$016E, $016E, $016F`).
