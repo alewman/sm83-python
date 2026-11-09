@@ -67,6 +67,7 @@ class SM83(ControlMixin, RotateBitMixin, ALUMixin, LoadMixin, CoreMixin):
         self.stop_hook = stop
         self.idu = 0
         self.pending_at_fetch = False
+        self.unsampled = None
         self._cycles = 0
         self._table = [getattr(self, name) for name in HANDLER_NAMES]
         self.restore_state(CPUState())
