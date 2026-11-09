@@ -247,6 +247,26 @@ def test_halt_decides_on_the_interrupt_state_before_its_own_fetch():
     assert before.cpu.step() == 1 and before.cpu.halt_bug and not before.cpu.halted
 
 
+def test_halt_sees_an_interrupt_the_board_raised_early_in_its_fetch():
+    # The board places interrupts within the M-cycle; one it raises early enough in the HALT's
+    # fetch counts as pending (Gambatte halt/late_m0i*_scx2/3 and AGE halt-m0-interrupt on real
+    # DMG and CGB, with a STAT interrupt): with IME on, no halt and the dispatch follows.
+    host = host_at(ie=0x02, ime=True)
+    host.load(0x0200, 0x76, 0x00)
+    host.on_cycle = lambda n, kind, address: (
+        n == 1 and host.cpu.request_interrupt(1, halt_sees=True)
+    )
+    assert host.cpu.step() == 1 and not host.cpu.halted and host.cpu.halt_dispatch
+    # in any other cycle it changes nothing: the next fetch decides afresh
+    other = host_at(ie=0x02)
+    other.load(0x0200, 0x00, 0x76, 0x3C)
+    other.on_cycle = lambda n, kind, address: (
+        n == 1 and other.cpu.request_interrupt(1, halt_sees=True)
+    )
+    assert other.cpu.step() == 1 and not other.cpu.halted
+    assert other.cpu.step() == 1 and other.cpu.halt_bug  # pending before HALT's fetch: the bug
+
+
 def test_halt_bug_reads_the_next_byte_twice():
     # U4: IME = 0 with an interrupt pending at HALT: no halt, the next fetch does not
     # increment PC, so INC A executes twice.
