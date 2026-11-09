@@ -50,6 +50,7 @@ class CoreMixin:
     locked: bool
     stop_if: int
     pending_at_fetch: bool
+    unsampled: int | None
     idu: int
     read_byte: Callable[[int], int]
     write_byte: Callable[[int, int], None]
@@ -165,7 +166,7 @@ class CoreMixin:
 
     # ----- interrupts, one step at a time ---------------------------------
 
-    def request_interrupt(self, bit: int, halt_sees: bool = False) -> None:
+    def request_interrupt(self, bit: int, halt_sees: bool = False, late: bool = False) -> None:
         """Raise interrupt ``bit`` (0 VBlank .. 4 Joypad) in IF. May be called from any bus
         callback: it is visible to every decision the core takes after that callback returns,
         never to one already taken earlier in the same step (docs/handoff-brief.md).
@@ -173,10 +174,16 @@ class CoreMixin:
         ``halt_sees``: the board raised it early enough in the M-cycle for a HALT whose fetch
         this cycle is to see it, so the HALT does not halt (timing.md "HALT"). The core cannot
         place an interrupt within its M-cycle; by default one raised during HALT's fetch is not
-        seen, as on the die with a timer interrupt."""
+        seen, as on the die with a timer interrupt.
+
+        ``late``: the board raised it after the point early in the M-cycle where a dispatch's
+        low-byte push samples IF, so that dispatch does not choose it; it stays pending. By
+        default an interrupt raised in that cycle is chosen, as one raised at its start."""
         if not 0 <= bit <= 4:
             raise ValueError("interrupt bit must be 0..4")
         self.if_ |= 1 << bit
+        if late and self.unsampled is not None:
+            self.unsampled |= 1 << bit  # the low-byte push already sampled IF
         if halt_sees and self.interrupt_pending:
             self.pending_at_fetch = True  # only a HALT fetched in this cycle reads it
 
@@ -191,7 +198,8 @@ class CoreMixin:
 
         The vector is chosen late: IE is sampled after the high-byte push and IF after the low
         one, so a push that writes IE ($FFFF) can cancel the dispatch and send PC to $0000
-        (Mooneye ie_push, hardware-verified on every model).
+        (Mooneye ie_push, hardware-verified on every model). IF is sampled early in the low push's
+        cycle: a request the board marks ``late`` there misses the vector (``request_interrupt``).
         """
         self.halted = False
         if self.halt_dispatch:
@@ -210,11 +218,15 @@ class CoreMixin:
         self._write(self.sp, self.pc >> 8, -1)  # M4: PCH
         enabled = self.ie  # IE as the high-byte push left it
         self.sp = (self.sp - 1) & 0xFFFF
+        self.unsampled = 0
+        before = self.if_
         self._write(self.sp, self.pc & 0xFF)  # M5: PCL
-        queue = enabled & self.if_ & INTERRUPT_BITS  # IF as the low-byte push left it
+        late, self.unsampled = self.unsampled, None
+        # IF as the push left it, without the interrupts raised after the push sampled it
+        queue = enabled & self.if_ & ~(late & ~before) & INTERRUPT_BITS
         if queue:
             bit = (queue & -queue).bit_length() - 1  # lowest pending bit wins
-            self.if_ &= ~(1 << bit)
+            self.if_ &= ~(1 << bit) | late  # a rise after the sample sets the bit again
             self.pc = 0x40 + 8 * bit
         else:
             self.pc = 0x0000  # cancelled: IF untouched (Mooneye ie_push round 1)
