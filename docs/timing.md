@@ -92,7 +92,7 @@ fetch-first model the brief chooses (SonoSooS "ISR and NMI"; Pan Docs
 | 2 | `I@PC−` | the IDU puts PC back (SameBoy `cycle_oam_bug(gb, GB_REGISTER_PC)`) |
 | 3 | `I@SP−` | SP ← SP − 1 |
 | 4 | `W@SP−` | PCH; **IE is sampled after this write** (a write to $FFFF here can cancel) |
-| 5 | `W@SP` | PCL; **IF is sampled after this write**; vector = lowest bit of `IE & IF & $1F`, or **$0000 if none**; IME ← 0; that IF bit cleared |
+| 5 | `W@SP` | PCL; **IF is sampled at this write** (see `late` below); vector = lowest bit of `IE & IF & $1F`, or **$0000 if none**; IME ← 0; that IF bit cleared |
 
 Then the handler's first opcode is fetched at the vector. The sampling points
 are SameBoy's (`interrupt_queue = gb->interrupt_enable` after the high write,
@@ -100,6 +100,16 @@ are SameBoy's (`interrupt_queue = gb->interrupt_enable` after the high write,
 targets $FF0F) and they are what Mooneye `ie_push` (hardware-verified on every
 model) requires. Gambatte `irq_precedence/late_if_via_sp_*` (hardware-captured)
 covers IF written by the push.
+
+Within cycle 5, IF is sampled early (SameBoy reads it at the low write's access,
+before that cycle's T-cycles run). The core cannot place a request within its
+M-cycle, so by default one raised in cycle 5's callback is sampled.
+`request_interrupt(bit, late=True)` marks one the board raised after the sample
+point: it is not chosen and stays pending, and if that bit was already pending
+and is the one chosen, it is cleared and then set again, because the late rise is
+a new edge. Gambatte `irq_precedence/late_m0irq_vs_tima_*_2` and
+`late_m0irq_retrigger_scx1_1` (hardware-captured, DMG and CGB) need this for an
+HBlank STAT interrupt raised from the cycle's second dot on.
 
 When is "pending" decided at all? At fetch cycles: the dispatch above replaces
 the instruction whose fetch is cycle 1. With per-M-cycle callbacks the
