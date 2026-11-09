@@ -165,13 +165,20 @@ class CoreMixin:
 
     # ----- interrupts, one step at a time ---------------------------------
 
-    def request_interrupt(self, bit: int) -> None:
+    def request_interrupt(self, bit: int, halt_sees: bool = False) -> None:
         """Raise interrupt ``bit`` (0 VBlank .. 4 Joypad) in IF. May be called from any bus
         callback: it is visible to every decision the core takes after that callback returns,
-        never to one already taken earlier in the same step (docs/handoff-brief.md)."""
+        never to one already taken earlier in the same step (docs/handoff-brief.md).
+
+        ``halt_sees``: the board raised it early enough in the M-cycle for a HALT whose fetch
+        this cycle is to see it, so the HALT does not halt (timing.md "HALT"). The core cannot
+        place an interrupt within its M-cycle; by default one raised during HALT's fetch is not
+        seen, as on the die with a timer interrupt."""
         if not 0 <= bit <= 4:
             raise ValueError("interrupt bit must be 0..4")
         self.if_ |= 1 << bit
+        if halt_sees and self.interrupt_pending:
+            self.pending_at_fetch = True  # only a HALT fetched in this cycle reads it
 
     @property
     def interrupt_pending(self) -> bool:
