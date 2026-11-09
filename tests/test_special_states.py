@@ -253,12 +253,16 @@ def test_halt_sees_an_interrupt_the_board_raised_early_in_its_fetch():
     # DMG and CGB, with a STAT interrupt): with IME on, no halt and the dispatch follows.
     host = host_at(ie=0x02, ime=True)
     host.load(0x0200, 0x76, 0x00)
-    host.on_cycle = lambda n, kind, address: n == 1 and host.cpu.request_interrupt(1, halt_sees=True)
+    host.on_cycle = lambda n, kind, address: (
+        n == 1 and host.cpu.request_interrupt(1, halt_sees=True)
+    )
     assert host.cpu.step() == 1 and not host.cpu.halted and host.cpu.halt_dispatch
     # in any other cycle it changes nothing: the next fetch decides afresh
     other = host_at(ie=0x02)
     other.load(0x0200, 0x00, 0x76, 0x3C)
-    other.on_cycle = lambda n, kind, address: n == 1 and other.cpu.request_interrupt(1, halt_sees=True)
+    other.on_cycle = lambda n, kind, address: (
+        n == 1 and other.cpu.request_interrupt(1, halt_sees=True)
+    )
     assert other.cpu.step() == 1 and not other.cpu.halted
     assert other.cpu.step() == 1 and other.cpu.halt_bug  # pending before HALT's fetch: the bug
 
