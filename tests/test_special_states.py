@@ -129,6 +129,26 @@ def test_a_request_during_the_low_push_can_pick_the_vector():
     assert host.cpu.pc == 0x40 and host.cpu.if_ == 0x04
 
 
+def test_a_late_request_during_the_low_push_misses_the_vector():
+    # The board marks a request it raised after the point early in M5 where the push samples IF
+    # (Gambatte irq_precedence/late_m0irq_vs_tima_*, real DMG and CGB): the timer wins and the
+    # STAT bit stays pending.
+    host = host_at(ie=0x06, if_=0x04, ime=True)
+    host.on_cycle = lambda n, kind, address: n == 5 and host.cpu.request_interrupt(1, late=True)
+    host.cpu.step()
+    assert host.cpu.pc == 0x50 and host.cpu.if_ == 0x02
+    # a late rise of the bit being dispatched is a new edge: it stays set (late_m0irq_retrigger)
+    again = host_at(ie=0x02, if_=0x02, ime=True)
+    again.on_cycle = lambda n, kind, address: n == 5 and again.cpu.request_interrupt(1, late=True)
+    again.cpu.step()
+    assert again.cpu.pc == 0x48 and again.cpu.if_ == 0x02
+    # in any other cycle it changes nothing: raised in M4, it is sampled and wins
+    early = host_at(ie=0x06, if_=0x04, ime=True)
+    early.on_cycle = lambda n, kind, address: n == 4 and early.cpu.request_interrupt(1, late=True)
+    early.cpu.step()
+    assert early.cpu.pc == 0x48 and early.cpu.if_ == 0x04 and early.cpu.unsampled is None
+
+
 def test_a_request_during_a_step_is_seen_by_the_next_step_only():
     host = host_at(ie=0x01, ime=True)
     host.load(0x0200, 0x00, 0x00)
