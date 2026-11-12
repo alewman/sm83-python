@@ -30,3 +30,8 @@ error.log
 
 # Die-model runs (scripts/die_compare.py): the generated ROM and the simulator's bus CSV.
 tests/die_runs/
+
+# ROM images and boot ROMs anywhere else in the tree.
+*.gb
+*.gbc
+*.bin

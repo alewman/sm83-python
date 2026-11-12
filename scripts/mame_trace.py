@@ -29,6 +29,7 @@ second) and exits.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -36,7 +37,8 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAME = "/usr/games/mame"
+# $MAME, else `mame` on PATH, else Debian's location.
+MAME = os.environ.get("MAME") or shutil.which("mame") or "/usr/games/mame"
 SAMEBOY_BOOT = ROOT / "reference" / "src" / "SameBoy" / "build" / "bin" / "tester"
 
 # driver -> (MAME's boot ROM file name, SameBoy's free substitute)

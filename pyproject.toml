@@ -24,6 +24,11 @@ classifiers = [
 ]
 dependencies = []
 
+[project.urls]
+Homepage = "https://github.com/alewman/sm83-python"
+Repository = "https://github.com/alewman/sm83-python"
+Issues = "https://github.com/alewman/sm83-python/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8",

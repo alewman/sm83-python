@@ -1,8 +1,11 @@
 # Handoff: build `sm83-python`, the Game Boy's CPU core
 
-> **Built 2026-10-07.** Rungs 0-5 pass; see [build-log.md](build-log.md) for what was built, what
-> the oracles changed relative to this brief (HALT, halted and locked bus cycles, `JR`), and what is
-> left. This document is kept as the task as it was given.
+> **Historical: the brief this core was built from, 2026-10-05.** Current state: the
+> [README](../README.md) and [validation.md](validation.md). The decisions and the bus contract
+> below are still the core's (the code cites them); [build-log.md](build-log.md) lists where the
+> oracles overruled the rest (HALT, halted and locked bus cycles, `JR`), and
+> [timing.md](timing.md) has the two `request_interrupt` flags added later (`halt_sees`,
+> `late`, 2026-11-08). Paths such as `/data/emu/...` are the machine it was written on.
 
 ## Context you are inheriting
 
