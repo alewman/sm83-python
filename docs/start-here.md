@@ -6,7 +6,7 @@ the name of the whole DMG chip, not of the CPU; GBCTR §"Introduction to the
 Sharp SM83 CPU core" and `gb-research/sm83-cpu-core/README.markdown` give the
 evidence for the name (Sharp's 1990 and 1996 microcomputer data books list SM83
 as the core of the SM8320 and SM8311-15). This repository builds the core
-alone. The board (`/data/emu/gameboy-python`) owns everything else on the
+alone. The board (gameboy-python) owns everything else on the
 chip: PPU, APU, timer, serial, joypad, DMA, boot ROM and memory map.
 
 Paths: `src/X` is `reference/src/X`, `docs/X` is `reference/docs/X`, `roms/X`

@@ -1,6 +1,7 @@
 # Documents
 
-Read in this order.
+Read in this order. The first six describe the core as it is; the last two are kept as the
+record of how it was built.
 
 | Document | What it holds |
 | --- | --- |
@@ -9,9 +10,9 @@ Read in this order.
 | [undocumented-behavior.md](undocumented-behavior.md) | Items U1–U14 (F's low nibble, DAA, the holes, the HALT bug, EI+HALT, IE push, STOP, IDU addresses, ...), contradictions C1–C7 between sources, open items |
 | [validation.md](validation.md) | Every oracle by tier with pins; what was run here and what it showed; the die-traced models; the rung plan |
 | [mame-oracle.md](mame-oracle.md) | The verified MAME 0.285 recipe with a free boot ROM, its trace format, and how MAME scores on the CPU tests |
-| [handoff-brief.md](handoff-brief.md) | The task for the session that builds the core: decisions, the bus contract, the harness, rungs, tooling, open decisions |
-| [build-log.md](build-log.md) | What was built, how to run the gates, where the oracles overruled the brief (HALT, the halted and locked bus, `JR`), and what is left |
 | [trace-schema.md](trace-schema.md) | The JSON Lines trace format: one record per processor boundary, every M-cycle with its address and IDU direction |
+| [handoff-brief.md](handoff-brief.md) | Historical (2026-10-05): the brief the core was built from. Its decisions and bus contract still hold, with the corrections the build made |
+| [build-log.md](build-log.md) | Historical (2026-10-07): what was built, how to run the gates, where the oracles overruled the brief (HALT, the halted and locked bus, `JR`), and what was left |
 
 ## Findings (1-6 while gathering, 2026-10-05; 7-9 from the build, 2026-10-07)
 

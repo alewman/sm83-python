@@ -1,5 +1,10 @@
 # Build log: the core, 2026-10-07
 
+> **Historical: the record of the first build, 2026-10-07.** Current state: the
+> [README](../README.md) and [validation.md](validation.md). Since then: the GitHub repository and
+> CI (PyPy, `pytest -m "not slow"`, ruff), and `request_interrupt`'s `halt_sees` and `late` flags
+> (2026-11-08, from the board's rung 6 work; [timing.md](timing.md)).
+
 What was built against [handoff-brief.md](handoff-brief.md), what the oracles changed, and what
 is left. The brief is the task as given; this is the record of the result.
 
@@ -62,3 +67,4 @@ STOP hook, and the oracle tiers.
   that are the core's come back here as issues.
 - **The DMG/CGB two-T-cycle difference in leaving HALT** is sub-M-cycle and the board's.
 - No GitHub repository, tag or CI yet, by the brief's rule (local until rung 3 passes; it has).
+  Both came the same day; there is still no tag or release.

@@ -24,8 +24,8 @@ run correctly`. Two free substitutes work:
 | SameBoy `dmg_boot.bin` (MIT, built by `scripts/build_referees.py sameboy`) | `src/SameBoy/BootROMs` | 5,881,108 (it animates the logo) | A=01 F=B0 B=00 C=13 D=00 E=D8 H=01 L=4D SP=FFFE, IE=00 IF=01 |
 | dmg-sim `boot/quickboot.bin` (CC-BY-SA-4.0) | `src/dmg-sim/boot` | 633,796 | the same |
 
-Real Nintendo boot ROMs are also available locally (paths and hashes in
-`/data/emu/gameboy-python/docs/start-here.md` "Boot ROMs"; DMG Rev 1 is MAME's
+Real Nintendo boot ROMs work too if you have them (hashes in gameboy-python's
+`docs/start-here.md` "Boot ROMs"; DMG Rev 1 is MAME's
 `dmg_boot.bin`, SHA-1 `4ed31ec6…`). Optional for rung 4: put one under the
 run's `roms/gameboy/` to get real boot timing without the checksum warning.
 Never commit it. The free substitutes remain the script's default.
@@ -88,10 +88,10 @@ Verified run: blargg `cpu_instrs/individual/06-ld r,r.gb`, 3 emulated seconds,
 
 | ROM | MAME 0.285 | Tier of the ROM |
 | --- | --- | --- |
-| blargg `cpu_instrs` (all 11) | Passed all tests | hardware-corrected |
-| blargg `instr_timing` | Passed | hardware-corrected |
-| blargg `mem_timing` | Passed all tests | hardware-corrected |
-| blargg `halt_bug` | **Failed** (DE always $0411: no double fetch) | hardware-corrected |
+| blargg `cpu_instrs` (all 11) | Passed all tests | hardware-verified |
+| blargg `instr_timing` | Passed | hardware-verified |
+| blargg `mem_timing` | Passed all tests | hardware-verified |
+| blargg `halt_bug` | **Failed** (DE always $0411: no double fetch) | hardware-verified |
 | Mooneye `instr/daa` | Test OK | hardware-verified |
 | Mooneye `di_timing-GS`, `halt_ime0_ei`, `intr_timing`, `push_timing`, `rapid_di_ei` | Test OK / assertions OK | hardware-verified |
 | Mooneye `ei_sequence` | **FAIL: NO INTR** | hardware-verified |

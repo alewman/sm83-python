@@ -8,6 +8,7 @@ The slow test records a real trace with scripts/mame_trace.py --io and replays i
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -154,7 +155,7 @@ def test_missing_entry_point_is_an_error():
         replay(rom(b""), parse_trace([line(0x0, REGS, 0, 0, 0)]))
 
 
-MAME = Path("/usr/games/mame")
+MAME = Path(os.environ.get("MAME") or shutil.which("mame") or "/usr/games/mame")
 BOOT = ROOT / "reference" / "src" / "SameBoy" / "build" / "bin" / "tester" / "dmg_boot.bin"
 BLARGG = ROOT / "reference" / "src" / "gb-test-roms" / "cpu_instrs" / "individual" / "06-ld r,r.gb"
 
