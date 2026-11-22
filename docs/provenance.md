@@ -67,9 +67,10 @@ Not run against GPL references (gambatte-core) or CC BY-SA ones.
 
 No file was ever deleted and no removed line cites a GPL source (`git log --all
 --diff-filter=D`, and removed lines searched for emulator names, "transcrib", "port of",
-"copied", GPL). Nothing to rewrite. Not a provenance matter but recorded: 10 commits
-(`60ea3d5` .. `d846ce7`) carry the author name "the owner's full name"; `docs/handoff-brief.md`
-holds machine paths (`/data/emu/...`).
+"copied", GPL). Nothing to rewrite for provenance. The owner's full name, once in the author
+fields of 10 commits, was mapped to the handle `alewman` by a history rewrite (2026-11-21,
+wave D of the family's history clean-up; commit hashes older than that changed with it).
+`docs/handoff-brief.md` holds machine paths (`/data/emu/...`).
 
 ## Owed
 
