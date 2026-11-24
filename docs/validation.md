@@ -110,8 +110,9 @@ covers a claim decides it.
 - 3,524 `.asm` tests in `test/hwtests/`, each file name carrying the expected
   output captured on a **DMG (dmg08)** and/or **CGB (cgb04c)**:
   `..._dmg08_cgb04c_outXX` (same on both), `..._dmg08_outXX_cgb04c_outYY`, or
-  `..._outaudio0/1`; `testrunner.cpp` reads the result as hex digits drawn on
-  screen. `test/qdgbas.py` (a small Python assembler) builds them.
+  `..._outaudio0/1`; the result is read as hex digits drawn on screen. Gambatte's
+  test runner and assembler script (GPL-2.0) are not fetched since 2026-11-24 (Aubrey);
+  the suite's prebuilt ROMs come with c-sp's bundle.
 - CPU-relevant directories: `undef_ops` (10, U3), `halt` (89), `irq_precedence`
   (44, incl. `late_if_via_sp`), `speedchange` (242, CGB STOP), `tima`, `div`.
   All need the board (they print through the PPU): rung 6, through

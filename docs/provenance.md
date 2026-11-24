@@ -76,3 +76,15 @@ wave D of the family's history clean-up; commit hashes older than that changed w
 
 - SPDX headers: 3 of 51 source files carry one (charter rule 2).
 - The three **cite** items above.
+
+## Closed-box sources removed (2026-11-24)
+
+Aubrey's rule of 2026-11-24: an MIT repository does not download or keep the source of
+anything the family's `sources.md` marks closed box only. gambatte-core's pin
+(https://github.com/pokemon-speedrunning/gambatte-core @ `5a41a68c`, GPL-2.0) now fetches only
+`test/hwtests/` (the suite); its test runner, assembler script and build files moved aside
+unopened, out of the repository. metroboy's pin is its prose only (README, docs, notes).
+
+**Kept, with a question for Aubrey:** dmg-sim (`786f8c8a`, CC BY-SA 4.0, closed box only),
+because `scripts/build_referees.py` builds it with Icarus Verilog for the die rung and no
+shipped build exists.

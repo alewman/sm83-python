@@ -44,11 +44,11 @@
   "rev": "5a41a68c25402421fb1983ddadc9faf2418ddb0f",
   "date": "2026-04-16T21:32:37-07:00",
   "sparse": [
-   "/test/",
+   "/test/hwtests/",
    "/README.md",
    "/COPYING"
   ],
-  "license": "GPL-2.0",
+  "license": "GPL-2.0: closed box only; since 2026-11-24 (Aubrey) only the test suite (test/hwtests) is fetched, not the test runner or the assembler script",
   "note": "test/hwtests: 3,524 .asm tests whose expected screen output was captured on DMG (dmg08) and CGB (cgb04c) hardware, encoded in each filename; test/qdgbas.py assembles them. Upstream sinamas/gambatte is now private (its GitHub repo is a README only)."
  },
  {
