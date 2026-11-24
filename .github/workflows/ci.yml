@@ -1,11 +1,11 @@
 name: CI
 
 # Minimal by design (private repo: Actions minutes cost money): one interpreter, PyPy, on pushes
-# to master and on pull requests. The corpora and simulators (fetched references, MAME, GHDL,
+# to main and on pull requests. The corpora and simulators (fetched references, MAME, GHDL,
 # dmg-sim) are not here; tests that need them skip, and `pytest -m slow` runs them locally.
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
 
 concurrency:
