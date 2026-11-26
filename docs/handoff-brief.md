@@ -60,10 +60,11 @@ The user's rules that bind this work:
 7. `/data/emu/z80-python/docs/start-here.md` ("The embedding contract") and
    `src/z80_python/`; `/data/emu/6502-python/src/sixfiveohtwo/cpu.py`.
 
-Then `python scripts/fetch_references.py` (16 repositories, 5 files incl. a
+Then `python scripts/fetch_references.py` (14 repositories, 5 files incl. a
 750 MB simulator bundle; `--no-tools` skips it) and
 `python scripts/build_referees.py` (SameBoy tester + free boot ROMs, GHDL venv
-for Gekkio's die model, dmg-sim). `python scripts/gbctr_timing.py` writes
+for Gekkio's die model; until 2026-11-26 also dmg-sim, now set aside: provenance.md "Author
+respect"). `python scripts/gbctr_timing.py` writes
 `tests/gbctr_timing.json`.
 
 ## Decisions already made
@@ -170,7 +171,8 @@ there. In summary:
    works, ~6,400 instructions/s) and write a VUnit testbench that drives it
    from SingleStepTests-style initial states to dump die-derived per-cycle bus
    activity *including internal-cycle addresses*; settle C1/U12. Confirm on
-   dmg-sim (msinger's independent netlist).
+   dmg-sim (msinger's independent netlist). (2026-11-26: dmg-sim is set aside for furrtek's
+   wishes; the confirmation it gave is recorded in provenance.md "Author respect".)
 6. **Through the board**: gameboy-python's milestone that runs blargg
    02-interrupts, `instr_timing`, `mem_timing`(-2), `halt_bug`, `oam_bug` and
    Mooneye's timing tests certifies the parts of this core only a board can

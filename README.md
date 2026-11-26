@@ -23,7 +23,7 @@ than the one before:
 | 2 | blargg `cpu_instrs` (hardware-verified) | 01 and 03-11 `Passed` in the minimal harness (02 needs a timer) |
 | 3 | Mooneye (hardware-verified) | `daa`, `reg_f`, `ie_push`, the EI/DI/RETI and dispatch-timing ROMs: 15 of the 75 acceptance ROMs pass in the harness; the rest need a timer, PPU or OAM DMA |
 | 4 | MAME 0.285 replay (emulator-derived) | no divergence over blargg `03` and six commercial games, 6.5 million instructions |
-| 5 | Gekkio's VHDL SM83 and msinger's dmg-sim (two independent die tracings) | every M-cycle of 533 cases (every opcode, both paths, dispatch) agrees with each; HALT entry and wake-up |
+| 5 | Gekkio's VHDL SM83 (die-traced from his own SGB-CPU 01 photographs) | every M-cycle of 533 cases (every opcode, both paths, dispatch) agrees; HALT entry. The wake-up rests on board-level test ROMs (rung 6: Mooneye `halt_ime1_timing2-GS`, `di_timing-GS`); msinger's dmg-sim, the second die model until 2026-11-26, is set aside ([docs/provenance.md](docs/provenance.md) "Author respect") |
 
 The die models corrected the bus in five places the documents had wrong or left open (`JR`'s
 internal cycle, the halted and locked address, HALT's two cycles, the wake, `EI; HALT`);
@@ -86,7 +86,7 @@ Nothing third-party is committed except `scripts/die/test_soc_irq.vhd`, a modifi
 Gekkio's mock SoC (MIT OR Apache-2.0, notice in the file). `scripts/fetch_references.py` rebuilds
 `reference/` from `scripts/pinned_files.json` (5 files pinned by SHA-256: the built Mooneye ROMs,
 GBCTR's PDF, the SonoSooS CPU-internals notes, and two tool bundles) and
-`scripts/pinned_repos.json` (16 repositories at full commit SHAs, sparse where large), including
+`scripts/pinned_repos.json` (14 repositories at full commit SHAs, sparse where large), including
 SingleStepTests sm83, blargg's and Mooneye's test ROMs, Gambatte's hardware-captured tests,
 SameBoy, Pan Docs, GBCTR, and two die-traced SM83 models. No boot ROM is needed: the harness
 starts at `$0100`, and MAME runs with SameBoy's free boot ROM.
@@ -95,7 +95,7 @@ starts at `$0100`, and MAME runs with SameBoy's free boot ROM.
 python scripts/fetch_references.py              # everything missing (~1 GB)
 python scripts/fetch_references.py --no-tools   # without the 750 MB simulator bundle
 python scripts/fetch_references.py --verify     # check what is present
-python scripts/build_referees.py                # SameBoy tester, GHDL venv, dmg-sim
+python scripts/build_referees.py                # SameBoy tester, GHDL venv
 python scripts/gbctr_timing.py                  # tests/gbctr_timing.json
 ```
 
@@ -107,24 +107,26 @@ They need `git`, `curl`, `make`, a C compiler, and `uv` for the GHDL venv; MAME 
 | Script | What |
 | --- | --- |
 | `scripts/fetch_references.py` | the pinned references, test ROMs and tool bundles |
-| `scripts/build_referees.py` | builds SameBoy's headless tester and free boot ROMs, a venv for Gekkio's die-traced VHDL SM83, and msinger's dmg-sim |
+| `scripts/build_referees.py` | builds SameBoy's headless tester and free boot ROMs and a venv for Gekkio's die-traced VHDL SM83 |
 | `scripts/gbctr_timing.py` | GBCTR's per-M-cycle tables (address, data, IDU, ALU, access kind) as JSON |
 | `scripts/mame_trace.py` | MAME 0.285 per-instruction trace and serial output of a Game Boy ROM, with a free boot ROM; `--io` adds the I/O read log the replay needs ([docs/mame-oracle.md](docs/mame-oracle.md)) |
 | `scripts/gen_opcode_table.py` | generates `src/sm83_python/_opcodes.py` from GBCTR's `opcodes.toml` and `gb-opcodes`, cross-checked |
 | `scripts/die_programs.py`, `die_run.py`, `die_compare.py`, `die_halt.py` | the all-opcodes ROM, a bus-dump testbench for Gekkio's VHDL SM83, and the cycle-for-cycle comparison with the core |
-| `scripts/dmgsim_run.py`, `dmgsim_rows.py`, `dmgsim_halt.py` | the same against msinger's dmg-sim, plus HALT woken by the timer |
 
 ## Credits
 
 The core rests on other people's research, each cited where it is used: Gekkio's
 [Game Boy: Complete Technical Reference](https://github.com/Gekkio/gb-ctr), his
 [Mooneye Test Suite](https://github.com/Gekkio/mooneye-test-suite) and his die-traced VHDL SM83
-([gb-research](https://github.com/Gekkio/gb-research)); msinger's
-[dmg-sim](https://github.com/msinger/dmg-sim) and DMG schematics; SonoSooS's *Gameboy CPU
+([gb-research](https://github.com/Gekkio/gb-research)); SonoSooS's *Gameboy CPU
 internals*; [Pan Docs](https://github.com/gbdev/pandocs); blargg's test ROMs;
 [SingleStepTests sm83](https://github.com/SingleStepTests/sm83);
 [SameBoy](https://github.com/LIJI32/SameBoy) and [SameSuite](https://github.com/LIJI32/SameSuite);
 Gambatte's hardware tests; and [gb-opcodes](https://github.com/gbdev/gb-opcodes).
+From 2026-10-05 to 2026-11-26 msinger's dmg-sim (a simulation of his DMG schematics, which
+derive from furrtek's DMG-CPU-Inside) was the second die model and GateBoy's README was read;
+both are set aside for furrtek's wishes, not for their licences
+([docs/provenance.md](docs/provenance.md) "Author respect").
 
 ## Licence
 

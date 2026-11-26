@@ -3,9 +3,9 @@
 
 Builds the all-opcodes ROM (scripts/die_programs.py), runs it on the core behind a model of
 the die testbench's mock SoC, runs it on the die model (scripts/die_run.py), and compares the
-two M-cycle sequences case by case (``--dmgsim LOG`` swaps the VHDL model for msinger's
-independent netlist simulation, scripts/dmgsim_run.py): kind (read, write or internal) and address always, data
-for reads and writes. The comparison resynchronises at the start of every case, so one
+two M-cycle sequences case by case: kind (read, write or internal) and address always, data
+for reads and writes. (Until 2026-11-26 ``--dmgsim LOG`` swapped in msinger's dmg-sim; it is set
+aside for the author's wishes, see docs/provenance.md "Author respect".) The comparison resynchronises at the start of every case, so one
 disagreement does not hide the rest. The die is die-traced, so where it and the core disagree
 the die decides, unless it also disagrees with a hardware-verified test.
 
@@ -31,7 +31,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from die_programs import build  # noqa: E402
 from die_run import run_die  # noqa: E402
-from dmgsim_rows import read_rows as read_dmgsim  # noqa: E402
 
 from sm83_python import SM83, CPUState  # noqa: E402
 
@@ -183,9 +182,6 @@ def main() -> int:
     parser.add_argument("--show", type=int, default=25, help="cases to list")
     parser.add_argument("--detail", help="print a case (name prefix) side by side")
     parser.add_argument("--skew", type=int, default=0, help="shift the core's interrupt requests")
-    parser.add_argument(
-        "--dmgsim", type=Path, help="compare with a dmg-sim probe log (scripts/dmgsim_run.py)"
-    )
     args = parser.parse_args()
 
     builder = build()
@@ -204,13 +200,10 @@ def main() -> int:
             for address, (after, mask) in triggers_of(cases).items()
         )
     )
-    if args.dmgsim:
-        die = read_dmgsim(args.dmgsim)  # same row shape as the VHDL model's
-    else:
-        if args.rerun or not csv_path.exists():
-            print(f"running the die model for {len(core) + 60} M-cycles ...")
-            run_die(rom_path, csv_path, len(core) + 60, inject_path)
-        die = read_die(csv_path)
+    if args.rerun or not csv_path.exists():
+        print(f"running the die model for {len(core) + 60} M-cycles ...")
+        run_die(rom_path, csv_path, len(core) + 60, inject_path)
+    die = read_die(csv_path)
 
     at_core = starts(core, cases, lambda r: r[0] == "read" and r[3] == 1)
     at_die = starts(die, cases, lambda r: r[3] and r[0] == "read")

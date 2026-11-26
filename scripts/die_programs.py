@@ -175,7 +175,10 @@ def add_pending_halt_cases(b: Builder) -> None:
 
 
 def add_timer_halt_cases(b: Builder) -> None:
-    """HALT woken by the timer, on a full SoC (dmg-sim only; the mock SoC has no timer).
+    """HALT woken by the timer, on a full SoC (the mock SoC has no timer).
+
+    Ran on msinger's dmg-sim until 2026-11-26 (now set aside: docs/provenance.md "Author
+    respect"); kept as the program a real-console probe of the HALT wake would run.
 
     TIMA = $FC overflows four timer ticks (4 M-cycles each at 262144 Hz) after TAC enables it,
     which raises IF bit 2. Padding NOPs shift the HALT one M-cycle at a time across that moment, so the

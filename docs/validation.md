@@ -10,7 +10,7 @@ covers a claim decides it.
 | --- | --- |
 | **hardware-captured** | the expected values were recorded on real consoles (Gambatte's `_dmg08_`/`_cgb04c_` outputs) |
 | **hardware-verified** | a self-checking ROM whose pass condition the author confirmed on named hardware (Mooneye: per-test "Verified results" lines; blargg: CRCs/expectations from his devcart runs) |
-| **die-traced** | a model built from photographs of the chip (Gekkio's VHDL SM83, msinger's dmg-sim netlist). As good as the tracing; checked against the tiers above. A judge where it agrees with them, a strong detector elsewhere |
+| **die-traced** | a model built from photographs of the chip (Gekkio's VHDL SM83; msinger's dmg-sim netlist until 2026-11-26, now set aside: provenance.md "Author respect"). As good as the tracing; checked against the tiers above. A judge where it agrees with them, a strong detector elsewhere |
 | **research documentation** | GBCTR, SonoSooS, Pan Docs: written from hardware experiments and die study, not all of it traceable to a published test |
 | **emulator-derived** | values produced by an emulator (SingleStepTests sm83 via JSMoo/Ares, MAME, SameBoy, gbit). Detectors only |
 | **unknown** | generator not stated (adtennant v2). Detector of last resort |
@@ -144,22 +144,17 @@ cycle addresses for every opcode (C1, U12): a VUnit testbench that loads
 SingleStepTests-style initial states and logs the address bus per M-cycle
 (rung 5).
 
-**msinger's dmg-sim** (`msinger/dmg-sim` @ `786f8c8aaac7`, CC-BY-SA-4.0):
-SystemVerilog generated from `msinger/dmg-schematics` netlists of a DMG-CPU B
-die, including the SM83 and its decoders; a different person's tracing, so
-independent of Gekkio's. Simulates the whole console with Icarus Verilog
-(`dmg_cpu_b_gameboy.vvp` builds in seconds here); its `tests/` hold expected
-screen/save results for blargg and Mooneye with listed expected failures
-(`oam_bug` 2, 4, 5, 7, 8; `dmg_sound` 10). Speed measured here: about 0.1
-simulated seconds per 4–5 minutes wall. Run here: Mooneye `instr/daa` (the
-ROM in dmg-sim's own `tests/roms`, an older build) with `quickboot.bin`, 0.6
-simulated seconds, **3,044 s wall, frame 36 byte-identical to dmg-sim's
-expected `result.png`: pass**. A judge for short programs and bus-level
-questions (FST dumps), not for corpora.
-
-**GateBoy** (`aappleby/metroboy` @ `36797ad4cf77`): gate-level for the rest of
-the DMG, but its CPU is "my current best guess", not traced (C6). Never a CPU
-judge.
+**msinger's dmg-sim and GateBoy: set aside (2026-11-26).** dmg-sim (`msinger/dmg-sim` @
+`786f8c8aaac7`, CC-BY-SA-4.0) simulates msinger's dmg-schematics netlists of a DMG-CPU B, which
+derive from furrtek's DMG-CPU-Inside; GateBoy (`aappleby/metroboy` @ `36797ad4cf77`) is a
+gate-level port of furrtek's schematics (and its CPU is "my current best guess", not traced: C6).
+furrtek objects to AI use of his work, and the family sets his lineage aside for that wish, not
+for any licence (Aubrey, 2026-11-26). From 2026-10-05 to 2026-11-26 dmg-sim was this
+repository's second die model: it ran Mooneye `daa` (pass), the all-opcodes ROM (533 cases,
+agreeing with the core) and 24 timer-woken HALT cases, and it decided one change to the core
+(the wake, below). Its pins, scripts and tests left the repository; the fetched trees moved
+unopened to `/data/backup/sm83-python-furrtek-lineage-2026-11-26/`. What each fact rests on now:
+[provenance.md](provenance.md) "Author respect".
 
 ### Emulator-derived detectors
 
@@ -186,8 +181,8 @@ judge.
   SM83 at a high level, GBCTR §History) and no hardware-captured per-instruction
   corpus. The SM83's semantics rest on blargg/Mooneye/Gambatte plus the die
   models; its internal-cycle addresses on GBCTR plus the die models.
-- No Nintendo boot ROM is fetched or needed: SameBoy's and dmg-sim's free boot
-  ROMs both hand over the DMG register values (mame-oracle.md). Real ones
+- No Nintendo boot ROM is fetched or needed: SameBoy's free boot ROM hands over the DMG
+  register values (mame-oracle.md; dmg-sim's `quickboot.bin` did too, until 2026-11-26). Real ones
   (hashes in gameboy-python's `docs/start-here.md` "Boot ROMs") are optional for
   rung 4 and never committed.
 
@@ -202,7 +197,7 @@ Each rung is cheaper than the next and earns one claim. Do not reorder.
 | 2 | blargg `cpu_instrs` 01, 03–11 in `sm83_python.harness`: serial text ends "Passed", CPython and PyPy, wall time recorded | hardware-verified | instruction semantics as blargg's hardware CRCs see them |
 | 3 | Mooneye in the harness: `daa`, `reg_f`, `ie_push`; then `if_ie_registers`, `ei_sequence`, `ei_timing`, `rapid_di_ei`, `intr_timing`, `reti_intr_timing` once the harness completes serial transfers (SC bit 7 clears after a write of $81) instead of the mock SoC's constant $7F | hardware-verified | DAA on every input, F's low nibble, IE-push cancellation, EI/DI sequences |
 | 4 | MAME replay with I/O reads fed from MAME's log (mame-oracle.md) on several commercial-style programs; per-instruction registers and cycle deltas | emulator-derived | long real-code agreement; every divergence explained by a higher tier |
-| 5 (after 0–3; not blocking them) | Gekkio's VHDL: rung 2/3 ROMs agree; new per-instruction testbench dumps die-derived bus cycles incl. internal addresses for all opcodes and dispatch; compare with the core. Spot-check on dmg-sim | die-traced | internal-cycle addresses and dispatch bus from the die, not from one document |
+| 5 (after 0–3; not blocking them) | Gekkio's VHDL: rung 2/3 ROMs agree; new per-instruction testbench dumps die-derived bus cycles incl. internal addresses for all opcodes and dispatch; compare with the core (until 2026-11-26 also spot-checked on dmg-sim, now set aside) | die-traced | internal-cycle addresses and dispatch bus from the die, not from one document |
 | 6 | Through gameboy-python: blargg 02, `instr_timing`, `mem_timing`, `mem_timing-2`, `halt_bug`, `oam_bug`; Mooneye timing tests; Gambatte `halt`, `irq_precedence`, `undef_ops`, `speedchange`; SameSuite `ei_delay_halt` | hardware-verified / hardware-captured | HALT, wake-up, dispatch timing and STOP as the hardware does them, on DMG then CGB |
 
 Rung 6 is the board's acceptance, not this repository's; failures it traces
@@ -225,19 +220,22 @@ replayed again (their traces and ROMs are local, not fetched).
 | 2 | blargg `cpu_instrs` 01, 03-11: `Passed` (0.1-4.7 s each on CPython); 02 prints `Timer doesn't work` / `Failed #4` as documented (the harness has no TIMA) | hardware-verified |
 | 3 | Mooneye: `instr/daa`, `bits/reg_f`, `interrupts/ie_push`, `if_ie_registers`, `ei_sequence`, `ei_timing`, `rapid_di_ei`, `intr_timing`, `reti_intr_timing` pass (the harness completes serial transfers and counts DIV); `div_timing` and `pop_timing` also pass. Of the 75 acceptance ROMs, 15 pass board-free; the rest need TIMA, the PPU or OAM DMA | hardware-verified |
 | 4 | MAME replay (`scripts/mame_trace.py --io`, `sm83_python.replay`): **no divergence** in PC, A, F, B, C, D, E, H, L, SP, IE, I/O read order or non-HALT cycle counts over blargg `03` (0.73 M instructions) and six commercial games (Kirby's Dream Land 2.62 M, Metroid II 1.11 M, Castlevania 0.74 M, Bubble Bobble 0.56 M, Dr. Mario 0.54 M, Super Mario Land 0.24 M; about 2,900 HALT wake-ups and 544 interrupts MAME took outside HALT). Mutation-checked. MAME bills one cycle less to the first instruction after a HALT wake-up; a trace cannot place it, so that one group is not cycle-checked | emulator-derived (detector) |
-| 5 | Gekkio's VHDL SM83 and msinger's dmg-sim each agree with the core on **all 533 cases / 11,316 M-cycles** of the all-opcodes ROM (kind, address and data of every cycle, internal cycles included); 15 HALT-entry scenarios on the VHDL model; 24 timer-woken HALT scenarios on dmg-sim (2-15 halted cycles, IME on and off). The comparison changed the core in five places (below) | die-traced (two independent tracings) |
+| 5 | Gekkio's VHDL SM83 agrees with the core on **all 533 cases / 11,316 M-cycles** of the all-opcodes ROM (kind, address and data of every cycle, internal cycles included) and on 15 HALT-entry scenarios. (Until 2026-11-26 msinger's dmg-sim also agreed on the 533 cases and on 24 timer-woken HALT scenarios; set aside, provenance.md "Author respect".) The comparison changed the core in five places (below) | die-traced (one tracing since 2026-11-26) |
 
 What rung 5 changed (each a deviation from this document's earlier text, now corrected in
 [timing.md](timing.md) and [undocumented-behavior.md](undocumented-behavior.md)):
 
 1. `JR`'s internal cycle drives `{PCH, $00}`, not PC (GBCTR's "PCH" is literal).
 2. A locked CPU drives `$0000` on every cycle.
-3. A halted CPU drives `$0000` on every cycle (not PC), and resumes in the cycle after IF rises.
+3. A halted CPU drives `$0000` on every cycle (not PC; both models), and resumes in the cycle after
+   IF rises (dmg-sim only; since 2026-11-26 TEST ROM: one extra wake cycle fails Mooneye
+   `halt_ime1_timing2-GS` and `di_timing-GS` on the board; provenance.md "Author respect").
 4. HALT that halts takes two cycles (fetch, then a read of the next byte without moving PC); the
    HALT bug takes one; the decision uses the interrupt state sampled before HALT's own fetch.
 5. `EI; HALT` with an interrupt pending: HALT's cycle is the dispatch's discarded fetch.
 
 Limits of the die checks: the VHDL model on Gekkio's mock SoC never wakes a halted CPU (the
-interrupt latch that does it is clocked by a clock the mock gates), so wake-up rests on dmg-sim;
-STOP is not tested on either (no joypad or KEY1 in the mock; dmg-sim could, not done); the
+interrupt latch that does it is clocked by a clock the mock gates), so wake-up rested on dmg-sim
+and, since 2026-11-26, rests on board-level test ROMs; STOP is not tested on the die (no joypad
+or KEY1 in the mock); the
 mock SoC's `reti_intr_timing` failure noted above is unexplained and not the core's.

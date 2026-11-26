@@ -54,8 +54,9 @@ followed by `RST`, the EI case wins (Pan Docs).
 dispatch happens at the HALT and returns to it (SameBoy `pc--`; SonoSooS table
 "Jump to vector on fetch of HALT opcode"). Mooneye `halt_ime1_timing`.
 
-**U7. HALT wake-up timing differs DMG vs CGB** (and the DMG wake itself is settled, see
-[timing.md](timing.md) "HALT": the CPU resumes in the cycle after IF rises, dmg-sim, 24 cases). SameBoy adds 2 T-cycles on
+**U7. HALT wake-up timing differs DMG vs CGB** (the DMG wake itself: [timing.md](timing.md) "HALT": the CPU resumes in the cycle after IF
+rises, TEST ROM (Mooneye `halt_ime1_timing2-GS`, `di_timing-GS`); seen cycle by cycle on
+dmg-sim until it was set aside, 2026-11-26). SameBoy adds 2 T-cycles on
 leaving HALT on DMG only; Mooneye `halt_ime1_timing2-GS` and `di_timing-GS`
 pass on DMG/MGB/SGB/SGB2 and fail on CGB/AGB/AGS. Sub-M-cycle: the board's,
 but the core must report each halted M-cycle so the board can place it.
@@ -86,8 +87,8 @@ covered by Gambatte `speedchange` (hardware-captured).
 "The bus". *Sources:* GBCTR's tables (single author, Gekkio, who also wrote
 the VHDL model: not independent), Pan Docs `OAM_Corruption_Bug.md` (which
 counts `POP` as triggering the bug 3 times and `PUSH` 4 times), blargg
-`oam_bug` (hardware-verified, DMG, board). **Settled 2026-10-07 (rung 5):** both die-traced
-models, Gekkio's VHDL and msinger's independently traced dmg-sim, give the same internal-cycle
+`oam_bug` (hardware-verified, DMG, board). **Settled 2026-10-07 (rung 5):** the die-traced
+models, Gekkio's VHDL and (until it was set aside on 2026-11-26) msinger's dmg-sim, give the same internal-cycle
 addresses as GBCTR's tables for all 505 opcodes (both paths), all 256 CB opcodes and the
 interrupt dispatch, with one correction: `JR`'s internal cycle drives `{PCH, $00}`, not PC.
 The OAM-bug corruption pattern itself is the board's (rung 6, `oam_bug`).
@@ -98,9 +99,10 @@ tests it. Do not implement; record if the die models show it.
 
 **U14. Interrupt dispatch from HALT on wake costs a discarded fetch.** SonoSooS
 HALT table ("wakeup from HALT mode, dummy fetch (with increment)"). Mooneye
-`halt_ime1_timing` measures it on a board. **dmg-sim (rung 5):** there is no cycle of its own:
-the cycle after IF rises *is* the dispatch's discarded fetch (IME = 1) or the refetch of the byte
-after the HALT (IME = 0).
+`halt_ime1_timing` measures it on a board. There is no cycle of its own: the cycle after IF
+rises *is* the dispatch's discarded fetch (IME = 1) or the refetch of the byte after the HALT
+(IME = 0). (Seen on dmg-sim at rung 5 until 2026-11-26; now TEST ROM: an extra wake cycle fails Mooneye
+`halt_ime1_timing2-GS` and `di_timing-GS` on the board: provenance.md "Author respect".)
 
 ## Contradictions between sources (C)
 
@@ -109,7 +111,7 @@ the previous cycle's address on `---` cycles ("For convenience, we often just
 use the last address generated", its README); GBCTR writes the IDU register or
 $0000 (e.g. `INC BC` M2: corpus PC, GBCTR BC). *Rule:* compare reads and writes
 (address, data, order) against the corpus; ignore its address on internal
-cycles; take internal addresses from GBCTR. **Confirmed by both die models** (rung 5), except
+cycles; take internal addresses from GBCTR. **Confirmed by the die models** (rung 5: Gekkio's VHDL; dmg-sim too until 2026-11-26), except
 that GBCTR's "PCH" on `JR` means `{PCH, $00}`.
 
 **C2. Pan Docs' "two wait states" vs SonoSooS' IDU cycles in dispatch.**
@@ -137,8 +139,8 @@ row as a whole is offset one cycle early. *Rule:* the data row and pseudocode
 **C6. GateBoy's CPU is not die-derived.** Easy to assume from "gate-level
 simulation of the original Game Boy"; its README says the CPU is "my current
 best guess". *Rule:* GateBoy is never a judge for the SM83. The die-traced SM83
-models are Gekkio's VHDL (`gb-research/sm83-cpu-core/hdl`) and msinger's
-netlist in dmg-sim.
+model is Gekkio's VHDL (`gb-research/sm83-cpu-core/hdl`). (2026-11-26: GateBoy and msinger's
+dmg-sim are both set aside for furrtek's wishes; provenance.md "Author respect".)
 
 **C7. MAME as a referee.** MAME 0.285 passes cpu_instrs, instr_timing,
 mem_timing, daa, di_timing-GS, halt_ime0_ei, intr_timing, push_timing,

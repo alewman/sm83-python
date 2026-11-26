@@ -256,8 +256,10 @@ class CoreMixin:
                 self._idle(0x0000)  # a halted CPU drives $0000 and nothing else (rung 5)
                 return 1
             # The interrupt flag rose in an earlier cycle: the CPU resumes in this one, with no
-            # idle cycle first (dmg-sim wakes in the cycle after IF rises). It dispatches if IME
-            # is on, else fetches the byte after the HALT again.
+            # idle cycle first (TEST ROM: on gameboy-python, one extra idle cycle here fails
+            # Mooneye halt_ime1_timing2-GS and di_timing-GS, verified on DMG; OBSERVED
+            # 2026-11-26, docs/provenance.md "Author respect"). It dispatches if IME is on, else
+            # fetches the byte after the HALT again.
             self.halted = False
         if effective_ime and pending:
             self._dispatch()

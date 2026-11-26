@@ -115,28 +115,6 @@
   "note": "Game Boy Instruction Tester: compares a CPU against a bundled reference implementation instruction by instruction (emulator-derived)."
  },
  {
-  "path": "reference/src/metroboy",
-  "url": "https://github.com/aappleby/metroboy",
-  "rev": "36797ad4cf77b3e04ffe45716218a79b5280076a",
-  "date": "2025-02-22T19:36:25-08:00",
-  "sparse": [
-   "/README.md",
-   "/docs/",
-   "/notes/"
-  ],
-  "license": "none stated",
-  "note": "GateBoy/LogicBoy. README: the CPU is NOT from the die ('GateBoy's CPU is instead my current best guess'); gate-level for the rest of the DMG only."
- },
- {
-  "path": "reference/src/dmg-sim",
-  "url": "https://github.com/msinger/dmg-sim",
-  "rev": "786f8c8aaac7ae507eac2a59f2a7d3d5e91dfe66",
-  "date": "2026-09-11T03:16:30+02:00",
-  "sparse": [],
-  "license": "CC-BY-SA-4.0",
-  "note": "SystemVerilog generated from msinger/dmg-schematics netlists of a DMG-CPU B die, INCLUDING the SM83 core (sm83/sm83.sv and its decoders). Icarus Verilog. tests/ holds expected results (blargg, mooneye) and xfail lists; boot/quickboot.bin is a free fast boot ROM."
- },
- {
   "path": "reference/src/gb-research",
   "url": "https://github.com/Gekkio/gb-research",
   "rev": "59088f486f579a69fd86bd86a55181b937e769e0",

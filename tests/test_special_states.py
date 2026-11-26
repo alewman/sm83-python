@@ -212,7 +212,7 @@ def test_halt_ime1_no_pending_halts_then_dispatches_on_wake():
     assert host.cpu.step() == 2 and host.cpu.halted and host.cpu.pc == 0x0201
     assert host.log == [("read", 0x0200, 1), ("read", 0x0201, 0)]
     host.log.clear()
-    # a halted CPU drives $0000 and nothing else, one cycle per step (die model, dmg-sim)
+    # a halted CPU drives $0000 and nothing else, one cycle per step (Gekkio's VHDL die model)
     assert host.run(3) == [1, 1, 1] and host.log == [("internal", 0x0000, 0)] * 3
     host.cpu.request_interrupt(0)
     # IF rose in an earlier cycle: the CPU resumes in the next one, which starts the dispatch

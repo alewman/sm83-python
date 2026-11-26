@@ -60,8 +60,9 @@ DAA is described in [undocumented-behavior.md](undocumented-behavior.md).
 
 The bus does one access per **M-cycle** (machine cycle) = 4 **T-cycles**
 (the 4.194304 MHz master clock on DMG; M-cycle rate 1.048576 MHz).
-GateBoy's README and GBCTR's timing diagrams split each M-cycle into 8 clock
-phases; the CPU's own model only needs M-cycles. On CGB in double-speed mode
+GBCTR's timing diagrams (`gb-ctr/appendix/external-bus.typ`) split each M-cycle into the 8
+half-periods of the 4 MiHz clock, with the read's sampling edge marked late in the cycle (GateBoy's README, which
+named 8 phases A-H, is set aside since 2026-11-26); the CPU's own model only needs M-cycles. On CGB in double-speed mode
 the CPU's M-cycle takes 2 master-clock ticks instead of 4 while the PPU keeps
 its rate: the **board** scales time, the core does not change.
 

@@ -13,8 +13,9 @@ the fetch; each step is skipped when its output already exists.
 - ``hdl``: a Python 3.12 venv at reference/build/hdl-venv with VUnit 4.7.0 for
   Gekkio's VHDL SM83 (reference/src/gb-research/sm83-cpu-core/hdl). VUnit's
   sdist needs an old setuptools to build, hence the two-step install.
-- ``dmgsim``: ``make dmg_cpu_b_gameboy.vvp mkvid/mkimgs`` in
-  reference/src/dmg-sim with the bundle's Icarus Verilog.
+
+The ``dmgsim`` step (msinger's dmg-sim) was removed on 2026-11-26: dmg-sim is set aside for
+the author's wishes (docs/provenance.md "Author respect").
 
     python scripts/build_referees.py            # all steps
     python scripts/build_referees.py sameboy    # one step
@@ -38,12 +39,6 @@ SRC = ROOT / "reference" / "src"
 OSS = BUILD / "oss-cad-suite"
 RGBDS = BUILD / "rgbds"
 VENV = BUILD / "hdl-venv"
-
-
-def env_with_oss() -> dict[str, str]:
-    env = dict(os.environ)
-    env["PATH"] = f"{OSS / 'bin'}:{env['PATH']}"
-    return env
 
 
 def unpack(archive: Path, target: Path) -> None:
@@ -88,24 +83,11 @@ def step_hdl() -> None:
     subprocess.run([*pip, "--no-build-isolation", "vunit-hdl==4.7.0", "psutil", "toml"], check=True)
 
 
-def step_dmgsim() -> None:
-    if (SRC / "dmg-sim" / "dmg_cpu_b_gameboy.vvp").exists():
-        return
-    step_oss()
-    subprocess.run(
-        ["make", "dmg_cpu_b_gameboy.vvp", "mkvid/mkimgs"],
-        cwd=SRC / "dmg-sim",
-        env=env_with_oss(),
-        check=True,
-    )
-
-
 STEPS = {
     "oss": step_oss,
     "rgbds": step_rgbds,
     "sameboy": step_sameboy,
     "hdl": step_hdl,
-    "dmgsim": step_dmgsim,
 }
 
 

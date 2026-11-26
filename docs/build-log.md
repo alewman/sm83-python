@@ -3,7 +3,10 @@
 > **Historical: the record of the first build, 2026-10-07.** Current state: the
 > [README](../README.md) and [validation.md](validation.md). Since then: the GitHub repository and
 > CI (PyPy, `pytest -m "not slow"`, ruff), and `request_interrupt`'s `halt_sees` and `late` flags
-> (2026-11-08, from the board's rung 6 work; [timing.md](timing.md)).
+> (2026-11-08, from the board's rung 6 work; [timing.md](timing.md)). On 2026-11-26 msinger's
+> dmg-sim, the second die model below, was set aside for furrtek's wishes (it simulates
+> schematics derived from his); its scripts left the repository. Finding 3 below now rests on
+> board-level test ROMs: see [provenance.md](provenance.md) "Author respect".
 
 What was built against [handoff-brief.md](handoff-brief.md), what the oracles changed, and what
 is left. The brief is the task as given; this is the record of the result.

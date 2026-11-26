@@ -22,7 +22,7 @@ run correctly`. Two free substitutes work:
 | Boot ROM | From | Reaches $0100 at `totalcycles` | Registers at $0100 |
 | --- | --- | --- | --- |
 | SameBoy `dmg_boot.bin` (MIT, built by `scripts/build_referees.py sameboy`) | `src/SameBoy/BootROMs` | 5,881,108 (it animates the logo) | A=01 F=B0 B=00 C=13 D=00 E=D8 H=01 L=4D SP=FFFE, IE=00 IF=01 |
-| dmg-sim `boot/quickboot.bin` (CC-BY-SA-4.0) | `src/dmg-sim/boot` | 633,796 | the same |
+| dmg-sim `boot/quickboot.bin` (CC-BY-SA-4.0; set aside 2026-11-26 with dmg-sim, provenance.md "Author respect") | no longer fetched | 633,796 (measured 2026-10-05) | the same |
 
 Real Nintendo boot ROMs work too if you have them (hashes in gameboy-python's
 `docs/start-here.md` "Boot ROMs"; DMG Rev 1 is MAME's
@@ -30,9 +30,9 @@ Real Nintendo boot ROMs work too if you have them (hashes in gameboy-python's
 run's `roms/gameboy/` to get real boot timing without the checksum warning.
 Never commit it. The free substitutes remain the script's default.
 
-Both free ROMs hand over the DMG register values Pan Docs lists (`Power_Up_Sequence.md`,
+Both free ROMs handed over the DMG register values Pan Docs lists (`Power_Up_Sequence.md`,
 "DMG" column). The script uses SameBoy's; give it a different file with the
-same name under `roms/gameboy/` to use quickboot. A trace begins in the boot
+same name under `roms/gameboy/` to use another. A trace begins in the boot
 ROM: compare from the first line with PC = $0100.
 
 Driver names: `gameboy` (DMG), `gbpocket` (MGB, `mgb_boot.bin`), `gbcolor`

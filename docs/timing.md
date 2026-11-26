@@ -22,8 +22,8 @@ the last address generated", `src/sm83/README.MD`), GBCTR writes the IDU's
 register or $0000. Compare reads and writes against the corpus; take internal
 addresses from GBCTR (contradiction C1).
 
-**Settled against the die (2026-10-07, rung 5).** Both die-traced models (Gekkio's
-VHDL SM83 and msinger's dmg-sim) agree with the core, bus cycle by bus cycle, on
+**Settled against the die (2026-10-07, rung 5).** Gekkio's VHDL SM83 (and, until it was
+set aside on 2026-11-26, msinger's dmg-sim: provenance.md "Author respect") agrees with the core, bus cycle by bus cycle, on
 all 533 cases of an all-opcodes ROM: every opcode and both paths of every
 conditional, all 256 CB opcodes, `JR` at awkward low addresses, three interrupt
 dispatches. GBCTR's internal-cycle addresses are right everywhere except that its
@@ -117,7 +117,7 @@ convention is: the core decides at the start of `step()`, after the previous
 M-cycle's callback has returned (so the board has already advanced that cycle's
 4 T-cycles). Whether hardware samples IF a fraction of an M-cycle earlier or later
 is the board's to model; Mooneye `intr_timing`, `di_timing-GS`, `ei_timing`,
-`halt_ime*`, Gambatte `irq_precedence`, `halt` and dmg-sim decide it.
+`halt_ime*`, Gambatte `irq_precedence` and `halt` decide it.
 
 ## EI, DI, RETI
 
@@ -134,17 +134,24 @@ delayed-enable flag); compare it.
 
 ## HALT
 
-Settled against the die (rung 5): Gekkio's VHDL SM83 for the entry, msinger's dmg-sim for
-the wake-up. Cycles below are M-cycles of the fetch-first model.
+Settled against the die (rung 5): Gekkio's VHDL SM83 for the entry. The wake-up was settled on
+msinger's dmg-sim until 2026-11-26; dmg-sim is set aside for furrtek's wishes, so the wake now
+rests on board-level test ROMs at M-cycle resolution (below). Cycles below are M-cycles of the fetch-first model.
 
 - **Entry that halts**: HALT is **two** cycles. The fetch of the opcode, then one more cycle
   that reads the next byte as an opcode fetch (`m1`) at PC + 1 *without incrementing PC*
   (SonoSooS: HALT's generic fetch is `IR = [PC]`). The die then gates the CPU clock.
 - **Halted cycles**: one per M-cycle, no read or write, and the address bus carries **`$0000`**
   (both models), not PC. A halted `step()` is one `idle($0000)` and returns 1.
-- **Wake**: the CPU resumes in the cycle *after* the one in which IF rises (dmg-sim; 24
-  timer-driven cases, 2 to 15 halted cycles each, IME on and off): there is no idle cycle
-  between the last halted cycle and the next fetch. With IME = 0 it fetches the byte after
+- **Wake**: the CPU resumes in the cycle *after* the one in which IF rises: there is no idle
+  cycle between the last halted cycle and the next fetch. TEST ROM: on gameboy-python, the
+  core with one extra idle cycle at the wake fails Mooneye `halt_ime1_timing2-GS` and
+  `di_timing-GS` (verified on DMG), which pass without it; `halt_ime0_nointr_timing`,
+  `halt_ime1_timing`, `halt_ime0_ei` and `intr_timing` pass either way (ablation run
+  2026-11-26, OBSERVED). DOC: SonoSooS's HALT table. Until 2026-11-26 this rested on dmg-sim
+  (24 timer-driven cases, now set aside). Where inside the M-cycle IF is sampled stays the
+  board's; a real-DMG run of the 24 cases of `scripts/die_programs.py` `add_timer_halt_cases`
+  would pin the wake cycle by cycle. With IME = 0 it fetches the byte after
   the HALT again (the dummy fetch is thrown away) and runs it; with IME = 1 that cycle is the
   dispatch's discarded fetch and the five-cycle dispatch follows.
 - **The decision** to halt uses the interrupt state *before the HALT's own fetch*, like the
