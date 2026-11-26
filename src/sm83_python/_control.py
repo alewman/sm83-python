@@ -128,9 +128,9 @@ class ControlMixin(CoreMixin):
                 # makes no extra cycle: the byte after the HALT is fetched, and fetched again
                 self.halt_bug = True
             return
-        # HALT's own M-cycle fetches the next byte without incrementing PC (SonoSooS: IR =
-        # [PC]); the die shows it as an opcode fetch at the next address before its clock stops,
-        # and the byte is fetched again on wake-up. SameBoy halt() reads the same way.
+        # HALT's own M-cycle fetches the next byte without incrementing PC (DIE: Gekkio's VHDL
+        # shows it as an opcode fetch at the next address before its clock stops, rung 5's HALT
+        # scenarios), and the byte is fetched again on wake-up. SameBoy halt() reads the same way.
         self._read(self.pc)
         self.halted = True
 

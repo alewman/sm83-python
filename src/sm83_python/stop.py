@@ -1,7 +1,7 @@
 """What the board tells the core about a ``STOP`` (docs/timing.md "STOP").
 
 The core cannot decide STOP alone: the outcome depends on the joypad lines, KEY1 and the
-interrupt state (SameBoy ``stop()``, SonoSooS "NOP and STOP"). On ``$10`` the core calls
+interrupt state (SameBoy ``stop()``; Pan Docs, LIJI's STOP flowchart). On ``$10`` the core calls
 ``stop(pending)`` and carries out the :class:`StopResult` the board returns. A board that
 switches CPU speed does it inside the hook and then returns :attr:`StopAction.HALT`.
 """

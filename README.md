@@ -84,8 +84,8 @@ tier and pin, the MAME recipe, and the trace format.
 
 Nothing third-party is committed except `scripts/die/test_soc_irq.vhd`, a modified copy of
 Gekkio's mock SoC (MIT OR Apache-2.0, notice in the file). `scripts/fetch_references.py` rebuilds
-`reference/` from `scripts/pinned_files.json` (5 files pinned by SHA-256: the built Mooneye ROMs,
-GBCTR's PDF, the SonoSooS CPU-internals notes, and two tool bundles) and
+`reference/` from `scripts/pinned_files.json` (4 files pinned by SHA-256: the built Mooneye ROMs,
+GBCTR's PDF, and two tool bundles) and
 `scripts/pinned_repos.json` (14 repositories at full commit SHAs, sparse where large), including
 SingleStepTests sm83, blargg's and Mooneye's test ROMs, Gambatte's hardware-captured tests,
 SameBoy, Pan Docs, GBCTR, and two die-traced SM83 models. No boot ROM is needed: the harness
@@ -118,14 +118,15 @@ They need `git`, `curl`, `make`, a C compiler, and `uv` for the GHDL venv; MAME 
 The core rests on other people's research, each cited where it is used: Gekkio's
 [Game Boy: Complete Technical Reference](https://github.com/Gekkio/gb-ctr), his
 [Mooneye Test Suite](https://github.com/Gekkio/mooneye-test-suite) and his die-traced VHDL SM83
-([gb-research](https://github.com/Gekkio/gb-research)); SonoSooS's *Gameboy CPU
-internals*; [Pan Docs](https://github.com/gbdev/pandocs); blargg's test ROMs;
+([gb-research](https://github.com/Gekkio/gb-research)); [Pan Docs](https://github.com/gbdev/pandocs); blargg's test ROMs;
 [SingleStepTests sm83](https://github.com/SingleStepTests/sm83);
 [SameBoy](https://github.com/LIJI32/SameBoy) and [SameSuite](https://github.com/LIJI32/SameSuite);
 Gambatte's hardware tests; and [gb-opcodes](https://github.com/gbdev/gb-opcodes).
 From 2026-10-05 to 2026-11-26 msinger's dmg-sim (a simulation of his DMG schematics, which
 derive from furrtek's DMG-CPU-Inside) was the second die model and GateBoy's README was read;
-both are set aside for furrtek's wishes, not for their licences
+both are set aside for furrtek's wishes, not for their licences. SonoSooS's *Gameboy CPU
+internals* (cited 2026-10-05 to 2026-11-26) credits emu-russia/dmgcpu, which builds on msinger's
+schematics, so it is set aside too
 ([docs/provenance.md](docs/provenance.md) "Author respect").
 
 ## Licence

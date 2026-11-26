@@ -1,7 +1,8 @@
 """Rotates, shifts, SWAP and single-bit operations: the A-register rotates and the CB page.
 
 ``$CB`` is an instruction whose second cycle fetches the CB opcode without an interrupt
-check, so CB instructions are uninterruptible two-byte opcodes (SonoSooS "$CB prefix"; U10).
+check, so CB instructions are uninterruptible two-byte opcodes (DOC: GBCTR's CB pseudocode
+fetches ``IR`` with no ``intr``; SameBoy agrees; U10).
 Every CB operation takes the value in and returns the new value, setting its flags.
 """
 

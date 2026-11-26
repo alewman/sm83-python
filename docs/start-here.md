@@ -81,16 +81,19 @@ model:
 - `JP HL` is one M-cycle: its single cycle *is* the fetch at HL (GBCTR `JP_hl`:
   address HL, `PC ← HL + 1`).
 - Interrupt dispatch begins at a fetch: the opcode just fetched is discarded
-  and PC is decremented (SonoSooS "ISR and NMI"; GBCTR's `fetch_cycle()` returns
-  `IR, intr`).
+  and PC is decremented (DOC: GBCTR's `fetch_cycle()` returns `IR, intr`; DIE:
+  Gekkio's VHDL, rung 5's dispatch cases; SameBoy `GB_cpu_run`).
 - `HALT` fetches without incrementing PC (`IR = [PC]`), which is the root of the
-  HALT bug (SonoSooS "HALT"; nitro2k01 `double-halt-cancel`).
+  HALT bug (DIE: Gekkio's VHDL, rung 5's HALT-entry scenarios; TEST ROM: blargg
+  `halt_bug`; nitro2k01 `double-halt-cancel`).
 - `$CB` is an instruction whose last cycle fetches the CB opcode *without* the
   interrupt check, so CB instructions are uninterruptible two-byte opcodes
-  (SonoSooS "$CB prefix").
+  (DOC: GBCTR's CB pseudocode, `IR = fetch_cycle(addr=PC)` with no `intr`; SameBoy
+  `cb_prefix()` reads the opcode inside the instruction; U10).
 - The 11 holes never reach a fetch, so nothing (not even interrupts) restarts
-  the CPU (SonoSooS "Opcode holes"; Gambatte `hwtests/undef_ops/*_dmg08_cgb04c_out01`:
-  hardware-captured on DMG and CGB, the VBlank handler never runs).
+  the CPU (TEST ROM: Gambatte `hwtests/undef_ops/*_dmg08_cgb04c_out01`,
+  hardware-captured on DMG and CGB, the VBlank handler never runs; DIE: Gekkio's
+  VHDL never fetches again after `$D3`).
 
 A core may present this either way, as long as every bus access happens on
 the right M-cycle in the right order: (a) "fetch-decode-execute" where `step()`
@@ -101,7 +104,7 @@ ends with the next fetch (adtennant's v2 corpus is "decode-execute-prefetch").
 
 ## The bus as the SoC sees it
 
-Per GBCTR and SonoSooS, **every M-cycle drives a 16-bit address**, even when
+Per GBCTR and the die (rung 5, Gekkio's VHDL), **every M-cycle drives a 16-bit address**, even when
 nothing is read or written: the IDU (the 16-bit increment/decrement unit) sits
 on the address bus, so `INC rr`, `DEC rr`, `PUSH`'s pre-decrement, `LD SP,HL`
 and the rest put a register's value on the bus during their "internal" cycles,
@@ -130,7 +133,8 @@ $58 Serial, $60 Joypad; lowest bit wins (Pan Docs `Interrupts.md`). Upper three
 bits of IF read 1 on hardware (Mooneye `if_ie_registers`; board detail).
 
 - Pending = `IE & IF & $1F` ≠ 0. Dispatch needs IME = 1 as well.
-- **Dispatch takes 5 M-cycles** (Pan Docs, citing SonoSooS): M1 the discarded
+- **Dispatch takes 5 M-cycles** (DIE: Gekkio's VHDL, rung 5; DOC: Pan Docs `Interrupts.md`;
+  SameBoy `GB_cpu_run`): M1 the discarded
   fetch with `PC ← PC − 1` via the IDU, M2 internal with `SP ← SP − 1` (address
   SP), M3 write PCH to SP−1, M4 write PCL to SP−2 and load the vector, M5 the
   fetch at the vector. [timing.md](timing.md) has the bus row by row.
@@ -139,7 +143,8 @@ bits of IF read 1 on hardware (Mooneye `if_ie_registers`; board detail).
   the low-byte push (M4) is too late to cancel (Mooneye
   `acceptance/interrupts/ie_push`, verified on DMG, MGB, SGB, SGB2, CGB, AGB,
   AGS). A higher-priority interrupt arriving before the vector is chosen wins
-  (SonoSooS: "PC is only written in M3"). IME is cleared and the chosen IF bit
+  (TEST ROM: Gambatte `irq_precedence/late_*`, hardware-captured; SameBoy samples IF at
+  the low-byte push; [timing.md](timing.md) "Interrupt dispatch"). IME is cleared and the chosen IF bit
   is cleared; on cancellation IF is left alone (`ie_push` round 1, "IF modified").
 - **EI** takes effect after the following instruction: `EI; DI` lets nothing
   in; `EI; NOP` lets an interrupt in after the NOP (GBCTR `EI` "Schedules
@@ -147,13 +152,14 @@ bits of IF read 1 on hardware (Mooneye `if_ie_registers`; board detail).
   `ei_sequence`, `ei_timing`, `rapid_di_ei`). **DI** is immediate. **RETI**
   sets IME with no delay (GBCTR, SameBoy, Mooneye `reti_intr_timing`).
 - Interrupts are checked at fetch cycles only, and not at the fetch that ends
-  `$CB` (SonoSooS).
+  `$CB` (DOC: GBCTR's `fetch_cycle()` and its CB pseudocode; SameBoy agrees; no test
+  isolates the CB case, U10).
 
 ## HALT
 
 `HALT` stops instruction execution until `IE & IF & $1F` ≠ 0, whatever IME is
-(Pan Docs `halt.md`). The four cases (SonoSooS "HALT" table; Pan Docs; SameBoy
-`halt()`):
+(Pan Docs `halt.md`). The four cases (Pan Docs; SameBoy `halt()`; DIE: Gekkio's VHDL for
+the entry, rung 5; TEST ROM: Mooneye `halt_ime*`, SameSuite `ei_delay_halt`):
 
 | IME | Pending when HALT executes? | Result |
 | --- | --- | --- |
@@ -177,10 +183,12 @@ difference ([undocumented-behavior.md](undocumented-behavior.md) item U7).
 ## STOP
 
 `$10`. Not decoded as two bytes: it behaves as one byte that *appears* to be
-two when it stops, because waking performs a fetch (SonoSooS "NOP and STOP").
+two when it stops, because waking performs a fetch (SameBoy `stop()` reads the second
+byte only on some paths; DOC: Pan Docs `CPU_Instruction_Set.md`, "the second byte is not
+always ignored"; HYPOTHESIS on DMG, untested here).
 Its result depends on the joypad lines (P10–P13), on whether an interrupt is
-pending, on IME, and on CGB on KEY1 bit 0 (speed switch). SonoSooS gives the
-IME = 0 table; SameBoy `stop()` encodes the full CGB behaviour; Pan Docs
+pending, on IME, and on CGB on KEY1 bit 0 (speed switch). SameBoy `stop()` encodes
+the full CGB behaviour; Pan Docs
 reproduces LIJI's flowchart (`pandocs/src/imgs/stop_diagram.svg`). No licensed
 game uses STOP except to switch CGB speed (Pan Docs
 `Reducing_Power_Consumption.md`). GBCTR's STOP section is TODO. The core

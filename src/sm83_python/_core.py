@@ -194,7 +194,7 @@ class CoreMixin:
 
     def _dispatch(self) -> None:
         """Interrupt dispatch, five M-cycles from the discarded fetch to the vector choice
-        (docs/timing.md "Interrupt dispatch"; SonoSooS "ISR and NMI"; SameBoy GB_cpu_run).
+        (docs/timing.md "Interrupt dispatch"; DIE: Gekkio's VHDL, rung 5; SameBoy GB_cpu_run).
 
         The vector is chosen late: IE is sampled after the high-byte push and IF after the low
         one, so a push that writes IE ($FFFF) can cancel the dispatch and send PC to $0000

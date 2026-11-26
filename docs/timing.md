@@ -3,9 +3,10 @@
 Units: M-cycles (4 T-cycles each; see [start-here.md](start-here.md) "Clocks").
 Sources: GBCTR's per-instruction tables (`src/gb-ctr/chapter/cpu/instruction-set.typ`,
 extracted by `scripts/gbctr_timing.py` into `tests/gbctr_timing.json`),
-SonoSooS's *Gameboy CPU internals* (`docs/SonoSooS-DMGCPU.md`), SameBoy
-`Core/sm83_cpu.c`, and SingleStepTests sm83 (`src/sm83/v1`). Tiers and
-agreement are in [validation.md](validation.md).
+Gekkio's die-traced VHDL SM83 (rung 5), SameBoy `Core/sm83_cpu.c`, and
+SingleStepTests sm83 (`src/sm83/v1`). Tiers and agreement are in
+[validation.md](validation.md). (SonoSooS's *Gameboy CPU internals* was a source
+until 2026-11-26 and is set aside: [provenance.md](provenance.md) "Author respect".)
 
 ## Agreement already measured (2026-10-05)
 
@@ -83,8 +84,8 @@ register transfer for each cycle.
 ## Interrupt dispatch
 
 Five M-cycles from the discarded fetch to the vector fetch, in the
-fetch-first model the brief chooses (SonoSooS "ISR and NMI"; Pan Docs
-`Interrupts.md` "lasts 5 M-cycles"; SameBoy `GB_cpu_run`):
+fetch-first model the brief chooses (DIE: Gekkio's VHDL, rung 5's dispatch cases, cycle
+for cycle; DOC: Pan Docs `Interrupts.md` "lasts 5 M-cycles"; SameBoy `GB_cpu_run`):
 
 | # | Bus | What happens |
 | --- | --- | --- |
@@ -123,7 +124,7 @@ is the board's to model; Mooneye `intr_timing`, `di_timing-GS`, `ei_timing`,
 
 | Instruction | IME effect | Source |
 | --- | --- | --- |
-| `EI` | IME ← 1 after the *next* instruction's fetch check: `EI; X` cannot be interrupted before X completes | GBCTR (`IME_next`), SonoSooS "EI and DI", Mooneye `ei_sequence`, `ei_timing` |
+| `EI` | IME ← 1 after the *next* instruction's fetch check: `EI; X` cannot be interrupted before X completes | GBCTR (`IME_next`), Mooneye `ei_sequence`, `ei_timing` |
 | `DI` | immediate; also cancels a pending `EI` | GBCTR ("cancelling any scheduled effects of the EI"), Mooneye `rapid_di_ei` |
 | `RETI` | IME ← 1 immediately (no delay) | GBCTR (`RETI` pseudocode), SameBoy, Mooneye `reti_intr_timing` |
 | dispatch | IME ← 0 | Pan Docs |
@@ -140,7 +141,8 @@ rests on board-level test ROMs at M-cycle resolution (below). Cycles below are M
 
 - **Entry that halts**: HALT is **two** cycles. The fetch of the opcode, then one more cycle
   that reads the next byte as an opcode fetch (`m1`) at PC + 1 *without incrementing PC*
-  (SonoSooS: HALT's generic fetch is `IR = [PC]`). The die then gates the CPU clock.
+  (DIE: Gekkio's VHDL, the 15 HALT-entry scenarios; SameBoy `halt()` reads the same way).
+  The die then gates the CPU clock.
 - **Halted cycles**: one per M-cycle, no read or write, and the address bus carries **`$0000`**
   (both models), not PC. A halted `step()` is one `idle($0000)` and returns 1.
 - **Wake**: the CPU resumes in the cycle *after* the one in which IF rises: there is no idle
@@ -148,7 +150,7 @@ rests on board-level test ROMs at M-cycle resolution (below). Cycles below are M
   core with one extra idle cycle at the wake fails Mooneye `halt_ime1_timing2-GS` and
   `di_timing-GS` (verified on DMG), which pass without it; `halt_ime0_nointr_timing`,
   `halt_ime1_timing`, `halt_ime0_ei` and `intr_timing` pass either way (ablation run
-  2026-11-26, OBSERVED). DOC: SonoSooS's HALT table. Until 2026-11-26 this rested on dmg-sim
+  2026-11-26, OBSERVED). Until 2026-11-26 this rested on dmg-sim
   (24 timer-driven cases, now set aside). Where inside the M-cycle IF is sampled stays the
   board's; a real-DMG run of the 24 cases of `scripts/die_programs.py` `add_timer_halt_cases`
   would pin the wake cycle by cycle. With IME = 0 it fetches the byte after
@@ -179,9 +181,10 @@ rests on board-level test ROMs at M-cycle resolution (below). Cycles below are M
 No cycle table exists in any source. SameBoy's `stop()` reads at PC (comment:
 "Timing is completely unverified, and only affects STOP triggering the OAM bug"),
 then either enters stop mode, behaves as HALT, as a NOP, or switches speed
-(CGB, KEY1 bit 0), and conditionally reads the second byte. SonoSooS gives the
-IME = 0 cases ("STOP works, appears as 2B" / "acts as HALT, appears as 2B" /
-"acts as NOP, appears as 1B" / "zombie mode"). The core implements the decode
+(CGB, KEY1 bit 0), and conditionally reads the second byte. Pan Docs reproduces
+LIJI's flowchart of the cases (stop mode, HALT, NOP, one byte or two, a CPU glitch);
+none is tested on DMG here (HYPOTHESIS there; provenance.md "Author respect", S11).
+The core implements the decode
 and the PC behaviour and asks the board through the STOP hook which case applies
 ([the brief](handoff-brief.md)). Judges: Gambatte `speedchange` (242
 hardware-captured CGB tests), SameBoy's tester, and nothing for DMG stop mode.

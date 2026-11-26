@@ -26,8 +26,9 @@ every model, board-free, also passed by Gekkio's die-traced VHDL (run here
 $FD`: no further fetch, interrupts are never serviced. *Hardware-captured:*
 Gambatte `hwtests/undef_ops/undef_op_XX_dmg08_cgb04c_out01` (all eleven minus
 `$DD`, which has no test; IE = VBlank enabled, IME = 1: the handler that would
-print 03 never runs; DMG and CGB). *Explanation:* SonoSooS "Opcode holes"
-(the decode ROM yields no fetch). SameBoy models it as "halt with IE = 0",
+print 03 never runs; DMG and CGB). *Explanation (HYPOTHESIS):* the decode
+yields no fetch, so nothing samples an interrupt again; consistent with the die (the VHDL
+never fetches after `$D3`), not read from its decode logic. SameBoy models it as "halt with IE = 0",
 which has the same visible effect. Implement as a `locked` state the host can
 query; do not raise. **Bus (rung 5, both die models):** after the locking fetch every M-cycle
 is idle with the address bus at `$0000`.
@@ -51,8 +52,8 @@ HALT and the usual internal cycles and pushes follow; the core carries this as `
 followed by `RST`, the EI case wins (Pan Docs).
 
 **U6. HALT with IME = 1 and an interrupt already pending.** No halt; the
-dispatch happens at the HALT and returns to it (SameBoy `pc--`; SonoSooS table
-"Jump to vector on fetch of HALT opcode"). Mooneye `halt_ime1_timing`.
+dispatch happens at the HALT and returns to it (SameBoy `pc--`; DIE: Gekkio's VHDL, the
+HALT-entry case with IF raised before the HALT's fetch, IME = 1). Mooneye `halt_ime1_timing`.
 
 **U7. HALT wake-up timing differs DMG vs CGB** (the DMG wake itself: [timing.md](timing.md) "HALT": the CPU resumes in the cycle after IF
 rises, TEST ROM (Mooneye `halt_ime1_timing2-GS`, `di_timing-GS`); seen cycle by cycle on
@@ -64,8 +65,8 @@ but the core must report each halted M-cycle so the board can place it.
 **U8. IE written by the dispatch push.** See [timing.md](timing.md)
 "Interrupt dispatch": IE sampled after the high-byte push, IF after the low
 one; nothing left → PC = $0000, IF untouched, IME = 0. *Hardware:* Mooneye
-`interrupts/ie_push` (all models). *Explanation:* SonoSooS ("PC is only written
-in M3"). **MAME 0.285 fails this test** ("R1: not cancelled", run here).
+`interrupts/ie_push` (all models). *Emulator:* SameBoy's sampling points (timing.md).
+**MAME 0.285 fails this test** ("R1: not cancelled", run here).
 
 **U9. EI delay and DI.** EI enables after the next instruction; DI cancels a
 pending EI; RETI enables at once. *Hardware:* Mooneye `ei_sequence`,
@@ -73,14 +74,16 @@ pending EI; RETI enables at once. *Hardware:* Mooneye `ei_sequence`,
 `ei_sequence`** ("FAIL: NO INTR").
 
 **U10. CB-prefixed instructions are not interruptible between the prefix and
-the opcode.** SonoSooS "$CB prefix". Follows from the fetch model; no test
-isolates it.
+the opcode.** DOC: GBCTR's CB pseudocode (the CB opcode's fetch returns `IR` with no
+`intr`); SameBoy `cb_prefix()` reads the opcode inside the instruction. Follows from the
+fetch model; no test isolates it.
 
 **U11. STOP.** One byte that may appear as two; outcome depends on joypad
-lines, pending interrupts, IME, and on CGB KEY1. SonoSooS table (IME = 0);
-SameBoy `stop()`; LIJI's flowchart in Pan Docs. Includes a "zombie mode" and a
-glitched interrupt to $0000 when the joypad interrupt fires during wake-up
-(SonoSooS). Unverified on DMG by any test pinned here; CGB speed switching is
+lines, pending interrupts, IME, and on CGB KEY1. SameBoy `stop()`; LIJI's
+flowchart in Pan Docs (which allows a non-deterministic CPU glitch). A "zombie mode" and a
+glitched interrupt to $0000 when the joypad interrupt fires during wake-up are HYPOTHESIS
+(their only source, SonoSooS, is set aside: provenance.md "Author respect", S12); the core
+does not model them. Unverified on DMG by any test pinned here; CGB speed switching is
 covered by Gambatte `speedchange` (hardware-captured).
 
 **U12. IDU addresses on internal cycles.** See [start-here.md](start-here.md)
@@ -93,12 +96,12 @@ addresses as GBCTR's tables for all 505 opcodes (both paths), all 256 CB opcodes
 interrupt dispatch, with one correction: `JR`'s internal cycle drives `{PCH, $00}`, not PC.
 The OAM-bug corruption pattern itself is the board's (rung 6, `oam_bug`).
 
-**U13. A possible NMI.** SonoSooS lists "NMI (0x80)" and a "bugged interrupt
-(0x00)" in the dispatch priority. No Game Boy model wires an NMI; nothing here
-tests it. Do not implement; record if the die models show it.
+**U13. A possible NMI.** DIE: Gekkio's VHDL core has an `nmi` input that dispatches to
+`$0080` (`interrupts.vhd`, `control_unit.vhd`); his mock SoC ties it low. Whether any Game Boy
+SoC drives it is unknown (HYPOTHESIS that none does); nothing here tests it. The "bugged
+interrupt" to `$0000` is the cancelled dispatch (U8, Mooneye `ie_push`). Do not implement.
 
-**U14. Interrupt dispatch from HALT on wake costs a discarded fetch.** SonoSooS
-HALT table ("wakeup from HALT mode, dummy fetch (with increment)"). Mooneye
+**U14. Interrupt dispatch from HALT on wake costs a discarded fetch.** Mooneye
 `halt_ime1_timing` measures it on a board. There is no cycle of its own: the cycle after IF
 rises *is* the dispatch's discarded fetch (IME = 1) or the refetch of the byte after the HALT
 (IME = 0). (Seen on dmg-sim at rung 5 until 2026-11-26; now TEST ROM: an extra wake cycle fails Mooneye
@@ -114,11 +117,12 @@ $0000 (e.g. `INC BC` M2: corpus PC, GBCTR BC). *Rule:* compare reads and writes
 cycles; take internal addresses from GBCTR. **Confirmed by the die models** (rung 5: Gekkio's VHDL; dmg-sim too until 2026-11-26), except
 that GBCTR's "PCH" on `JR` means `{PCH, $00}`.
 
-**C2. Pan Docs' "two wait states" vs SonoSooS' IDU cycles in dispatch.**
+**C2. Pan Docs' "two wait states" vs the die's IDU cycles in dispatch.**
 Pan Docs `Interrupts.md` describes the first two dispatch M-cycles as "nothing
-happens; presumably nops"; SonoSooS and SameBoy put a discarded fetch and two
-IDU operations there, with addresses on the bus. Both count 5. *Rule:* SonoSooS/
-SameBoy (they name the bus activity, and the OAM bug depends on it).
+happens; presumably nops"; the die (Gekkio's VHDL, rung 5) and SameBoy put a discarded
+fetch and two IDU operations there, with addresses on the bus. Both count 5. *Rule:* the
+die and SameBoy (they name the bus activity, and the OAM bug depends on it). (SonoSooS
+said the same; set aside 2026-11-26.)
 
 **C3. HALT and STOP in the corpus.** SingleStepTests records `$76` and `$10` as
 three M-cycles with PC + 1 and no halting; adtennant's v2 corpus omits them

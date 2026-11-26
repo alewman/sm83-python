@@ -11,7 +11,7 @@ covers a claim decides it.
 | **hardware-captured** | the expected values were recorded on real consoles (Gambatte's `_dmg08_`/`_cgb04c_` outputs) |
 | **hardware-verified** | a self-checking ROM whose pass condition the author confirmed on named hardware (Mooneye: per-test "Verified results" lines; blargg: CRCs/expectations from his devcart runs) |
 | **die-traced** | a model built from photographs of the chip (Gekkio's VHDL SM83; msinger's dmg-sim netlist until 2026-11-26, now set aside: provenance.md "Author respect"). As good as the tracing; checked against the tiers above. A judge where it agrees with them, a strong detector elsewhere |
-| **research documentation** | GBCTR, SonoSooS, Pan Docs: written from hardware experiments and die study, not all of it traceable to a published test |
+| **research documentation** | GBCTR, Pan Docs: written from hardware experiments and die study, not all of it traceable to a published test (SonoSooS's *Gameboy CPU internals* until 2026-11-26, now set aside: provenance.md "Author respect") |
 | **emulator-derived** | values produced by an emulator (SingleStepTests sm83 via JSMoo/Ares, MAME, SameBoy, gbit). Detectors only |
 | **unknown** | generator not stated (adtennant v2). Detector of last resort |
 
@@ -57,10 +57,12 @@ covers a claim decides it.
 - Its `mem_rw` row is a label row offset by one cycle and once inconsistent
   (C5); use the data row.
 
-### SonoSooS, Pan Docs — research documentation
+### Pan Docs — research documentation
 
-- SonoSooS *Gameboy CPU internals*, gist rev `8efa6645` (2023-06-27): fetch
-  model, HALT/STOP tables, ISR cycles, opcode holes, NMI claim (U13).
+- Set aside 2026-11-26: SonoSooS *Gameboy CPU internals*, gist rev `8efa6645`
+  (2023-06-27), pinned from 2026-10-05 for the fetch model, HALT/STOP tables, ISR
+  cycles, opcode holes and the NMI claim (U13); it is in furrtek's lineage
+  (provenance.md "Author respect"), and each of its facts is re-cited there.
 - Pan Docs @ `0191af06ac49` (2026-10-03), CC0: instruction set, interrupts,
   halt, OAM bug, STOP flowchart, power-up registers.
 
